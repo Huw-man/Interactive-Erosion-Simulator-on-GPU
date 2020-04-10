@@ -1,41 +1,70 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
-<style>
-  body {
-    padding: 100px;
-    width: 1000px;
-    margin: auto;
-    text-align: left;
-    font-weight: 300;
-    font-family: 'Open Sans', sans-serif;
-    color: #121212;
-  }
-  h1, h2, h3, h4 {
-    font-family: 'Source Sans Pro', sans-serif;
-  }
-</style>
-<title>CS 184 Final Project</title>
-<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+    <style>
+        body {
+            padding: 100px;
+            width: 1000px;
+            margin: auto;
+            text-align: left;
+            font-weight: 300;
+            font-family: 'Open Sans', sans-serif;
+            color: #121212;
+        }
+        h1, h2, h3, h4 {
+            font-family: 'Source Sans Pro', sans-serif;
+        }
+    </style>
+    <title>CS 184 Final Project</title>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
 </head>
 
 
 <body>
 
-<h1 align="middle">CS 184: Final Project, Spring 2020</h1>
-<h1 align="middle"> </h1>
-<h2 align="middle">YOUR NAME, CS184-??</h2>
+<h1 align="middle">Interactive Erosion Simulator</h1>
+<h2 align="middle">Creating an application to model erosion of different materials over time via various erosive agents.</h2>
+<h3 align="middle">Newman Hu, Dylan Mcleod, Hanlin Chen</h3>
 
+
+<h3> Problem Description</h3>
+<p>
+    We are interested in simulating erosion for the procedural generation of natural looking terrain. This application will be able to simulate natural erosion processes that are unobservable in real time scales. We plan on addressing the effects of water and wind on loosely packed material like soil and sand.
+</p>
 <br><br>
 
-<div>
+<h3> Goals and Deliverable </h3>
+<p>
+    We plan to implement at least one erosive agent and one eroding material most likely wind and sand. With this application we plan to have basic interaction where the user is able to direct the erosive agent to affect the sand. We plan on implementing this with a platform independent online demo.
+</p>
 
-<h2 align="middle">Overview</h2>
-<p>Give a high-level overview of what you implemented in this project. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the project.</p>
+<p>
+    We hope to create an application that allows you to adjust time scales, as well as choose both the material being eroded and the erosive agent. We would like for it to be fully interactive, with the user having full control of all these parameters when simulating. Ideally, the user will be able to design their starting scene, pick parameters, and run the simulation for a certain amount of time. A successful implementation will ideally run online and allow users to interact with the application independent of their platform. A feature we hope to also implement is real-time rendering on the GPU.
+</p>
 
-<h2 align="middle">Part I: Masses and springs</h2>
 
 
+<h3> Schedule </h3>
+<p>
+    Week 1: Basic fluid simulation <br>
+    &emsp; i: implement platform <br>
+    Week 2: Implement erosion interactions <br>
+    &emsp; i: Sand as small particles <br>
+    Week 3: Create interactive application<br>
+    &emsp; i: enable user specification of erosive agent <br>
+    Week 4:  Extras: more materials, more erosive agents, real-time GPU simulation<br>
+</p>
+
+<h3>Resources </h3>
+<p>
+    Computing platform: Windows
+    Hardware resources: GPU
+    Software resources: OpenGL, three.js
+    Position Based Fluids: http://mmacklin.com/pbf_sig_preprint.pdf <br>
+    Hybrid Fluid Simulation, APIC: https://www.math.ucla.edu/~jteran/papers/JSSTS15.pdf <br>
+    Adaptive Tearing and Cracking of Thin Sheets: http://graphics.berkeley.edu/papers/Pfaff-ATC-2014-07/Pfaff-ATC-2014-07.pdf
+    Folding and Crumpling Adaptive Sheets: http://graphics.berkeley.edu/papers/Narain-FCA-2013-07/Narain-FCA-2013-07.pdf
+</p>
 </body>
 </html>
