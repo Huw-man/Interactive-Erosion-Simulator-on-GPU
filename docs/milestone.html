@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Milestone update</title>
+
+</head>
+<body>
+<h2> Milestone updates</h2>
+<h3> Status report</h3>
+<p>
+    We found two very helpful papers on the subject of simulating erosion [1] and [2].
+    Both of these papers can be implemented using fragment shaders on textures which represent heightmaps/terrain characteristics/etc. So, to start off, we started by setting up a simple simulation using fragment shaders, namely conway’s game of life. Since Conway’s game of life uses the information of textures in a small region to determine the next pixel of that texture, we figured it would be a good test of our fragment shader simulation code.
+</p>
+<p>
+    To simulate things using OpenGL fragment shaders, we use two OpenGL framebuffers (textures which can be rendered to), one representing the current frame and one representing the next. We run the simulation shader with the input texture being the current frame to determine the next frame, then we swap the framebuffers so that the next frame becomes the current. If we end up needing numerical derivatives (storing more than one timestep), we can just modify this to use more framebuffers, or more buffering.
+</p>
+<p>
+    Our erosion model will be based on a 2-D grid with virtual pipes dictating the flow between cells. Each cell contains information for the following: terrain height, water height, suspended sediment amount, the outflow flux components (left, right, top, bottom), and velocity vector. Then, the simulation will run the following updates: 1. Water increases due to rainfall or river sources. 2. Flow is simulated with the shallow-water model. Then the velocity field and the water surface are updated. 3. Erosion-deposition process is computed with the velocity field. 4. Suspended sediment is transported by the velocity field. 5. Water decreases due to evaporation. The equations for the updates are a bit complex so we won’t include them here. Because the model is designed such that everything lies on a 2-D grid, it is easy to store the various pieces of information into appropriate textures that can then be passed into the shader.
+</p>
+<p>
+    We haven’t really followed our initial plan, as the way we wanted to implement the simulation wouldn’t have worked well. Simulating all the water and terrain/sediment as particles would have been too complicated, so instead, we are now following the model that we found in the two papers referenced above. They simplify the simulation to height maps for water/terrain heights, and use shallow water equations to model the behavior of the water, rather than a fully 3-D implementation. So, because passing textures to shaders was an essential step and the math modeling the water/terrain updates is quite complex, we decided to first approach the pipeline of passing textures to the shader and having the shader make updates (we used Conway’s game of life as a simple example).
+</p>
+<p>
+    Now that we have our program set up to pass in textures to the shader, we need to create input textures corresponding to starting terrains, and implement the update steps for our simulation.
+</p>
+<p>
+    [1] <a href="http://www-ljk.imag.fr/Publications/Basilic/com.lmc.publi.PUBLI_Inproceedings@117681e94b6_fff75c/FastErosion_PG07.pdf?fbclid=IwAR1WL_szxrtu9HVPgPCGsikwzSDqrJ35WLiubNPfLg7bMGj_WjF7L1q-DOUhttp://www-ljk.imag.fr/Publications/Basilic/com.lmc.publi.PUBLI_Inproceedings@117681e94b6_fff75c/FastErosion_PG07.pdf?fbclid=IwAR1WL_szxrtu9HVPgPCGsikwzSDqrJ35WLiubNPfLg7bMGj_WjF7L1q-DOU">Fast Hydraulic Erosion Simulation and Visualization on GPU </a>
+</p>
+<p>
+    [2] <a
+        href="https://cgg.mff.cuni.cz/~jaroslav/papers/2008-sca-erosim/2008-sca-erosiom-fin.pdf?fbclid=IwAR1aqIXnx86Vtdk2QhRv0jPhobn6RQBHnBN9n6y_3fsaBhABmi9XMZigEcc"> Interactive Terrain Modeling Using Hydraulic Erosion</a>
+</p>
+
+<h3><a href="https://drive.google.com/a/berkeley.edu/file/d/1Locv_8YUhZblhTzh4C4ADB3dYgvyVpUn/view?usp=sharing">Video</a></h3>
+<h3><a href="https://docs.google.com/presentation/d/1IEN7PMjY9hBt5Wh1ZWKPFD8nfBjt2zMddlerJnfRGME/edit?pli=1#slide=id.p">Presentation Slides</a></h3>
+</body>
+</html>
