@@ -1,7 +1,8 @@
 // Include standard headers
-#include <stdio.h>
-#include <stdlib.h>
-
+#include <cstdio>
+#include <cstdlib>
+#include <utility>
+#include <iostream>
 // Include GLEW
 #include <GL/glew.h>
 
@@ -17,8 +18,239 @@ using namespace glm;
 #include <common/shader.hpp>
 #include <common/texture.hpp>
 
+#define getErrors() handle_gl_errors( __LINE__ )
+
+void handle_gl_errors(int LINE) {
+    GLenum err;
+    while((err = glGetError()) != GL_NO_ERROR)
+    {
+        std::cout << "OpenGL Error: " << err << "at line " << LINE << std::endl;
+    }
+}
+
+
+struct Framebuffer {
+    GLuint render_ref;
+    GLuint texture_ref;
+};
+
+GLuint screen_uvbuffer, screen_vertexbuffer;
+
+Framebuffer gen_framebuffer(glm::ivec2 size, GLenum filter = GL_NEAREST, GLenum wrap = GL_REPEAT) {
+    GLuint fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo); 
+
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);  
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
+    
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);   
+    
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		fprintf( stderr, "Failed to create framebuffer. Ooops!.\n" );
+		glfwTerminate();
+		exit(-1);
+    }
+
+    Framebuffer ret{fbo, texture};
+    return ret;
+}
+
+void bind_framebuffer_target(GLuint dest, glm::ivec2 viewport_size) {
+    glBindFramebuffer(GL_FRAMEBUFFER, dest);
+    glViewport(0, 0, viewport_size.x, viewport_size.y);
+}
+
+// Render src with shader
+void render_texture(GLuint src, GLuint shader) {
+    glUseProgram(shader);
+    
+    // Bind our texture in Texture Unit 0
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, src);
+    // Make the shader use Texture Unit 0
+    glUniform1i(glGetUniformLocation(shader, "tex"), 0);
+    getErrors();
+
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, screen_vertexbuffer);
+    glVertexAttribPointer(
+        0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+        2,                  // size
+        GL_FLOAT,           // type
+        GL_FALSE,           // normalized?
+        0,                  // stride
+        (void*)0            // array buffer offset
+    );
+    getErrors();
+
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, screen_uvbuffer);
+    glVertexAttribPointer(
+        1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+        2,                                // size : U+V => 2
+        GL_FLOAT,                         // type
+        GL_FALSE,                         // normalized?
+        0,                                // stride
+        (void*)0                          // array buffer offset
+    );
+
+    getErrors();
+    // Draw the triangle !
+    glDrawArrays(GL_TRIANGLES, 0, 2*3); // 12*3 indices starting at 0 -> 12 triangles
+    getErrors();
+
+    glDisableVertexAttribArray(0);
+    glDisableVertexAttribArray(1);
+}
+
+void conway() {
+	// Initialise GLFW
+	if( !glfwInit() )
+	{
+		fprintf( stderr, "Failed to initialize GLFW\n" );
+		exit(-1);
+	}
+
+	glfwWindowHint(GLFW_SAMPLES, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    glm::ivec2 screen_size{1024,768};
+
+    // NxN pixel cells for game of life
+    int cell_size = 1;
+    glm::ivec2 fbuf_size = screen_size/cell_size;
+
+	window = glfwCreateWindow( 1024, 768, "Conway's game of life", NULL, NULL);
+	if( window == NULL ){
+		fprintf( stderr, "Failed to open GLFW window. You should be using OpenGL 3.3 or greater (we're just modern like that).\n" );
+		glfwTerminate();
+		exit(-1);
+	}
+
+	glfwMakeContextCurrent(window);
+
+	// Initialize GLEW
+	glewExperimental = true; // Needed for core profile
+	if (glewInit() != GLEW_OK) {
+		fprintf(stderr, "Failed to initialize GLEW\n");
+		exit(-1);
+	}
+
+	// Ensure we can capture the escape key being pressed below
+	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+
+	// Dark blue background
+	glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
+
+	// Enable depth test
+	glEnable(GL_DEPTH_TEST);
+	// Accept fragment if it closer to the camera than the former one
+	glDepthFunc(GL_LESS); 
+
+
+
+	GLuint VertexArrayID;
+	glGenVertexArrays(1, &VertexArrayID);
+	glBindVertexArray(VertexArrayID);
+
+    glm::vec2 screen_verts[6] = {
+        glm::vec2(-1,-1), glm::vec2(1,-1), glm::vec2(1,1), glm::vec2(1,1), glm::vec2(-1,1), glm::vec2(-1,-1)
+    };
+
+	glGenBuffers(1, &screen_vertexbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, screen_vertexbuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(screen_verts), screen_verts, GL_STATIC_DRAW);
+
+    
+    glm::vec2 screen_uvs[6] = {
+        glm::vec2(0,0), glm::vec2(1,0), glm::vec2(1,1), glm::vec2(1,1), glm::vec2(0,1), glm::vec2(0,0)
+    };
+
+	glGenBuffers(1, &screen_uvbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, screen_uvbuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(screen_uvs), screen_uvs, GL_STATIC_DRAW);
+    getErrors();
+
+
+
+
+	// Create and compile our GLSL program from the shaders
+	GLuint init_shader = LoadShaders( "assets/blit.vert", "assets/noise.frag" );
+	glUseProgram(init_shader);
+	glUniform2f(glGetUniformLocation(init_shader, "screen_size"), fbuf_size.x, fbuf_size.y);
+    getErrors();
+
+	GLuint conway_shader = LoadShaders( "assets/blit.vert", "assets/conway.frag" );
+	glUseProgram(conway_shader);
+	glUniform2f(glGetUniformLocation(conway_shader, "screen_size"), fbuf_size.x, fbuf_size.y);
+    getErrors();
+
+    GLuint passthrough_shader = LoadShaders( "assets/blit.vert", "assets/blit.frag");
+    getErrors();
+
+
+
+
+
+    Framebuffer a = gen_framebuffer(fbuf_size);
+    Framebuffer b = gen_framebuffer(fbuf_size);
+
+    // First, render noise to a:
+    bind_framebuffer_target(a.render_ref, fbuf_size);
+	glClear(GL_COLOR_BUFFER_BIT);
+    render_texture(b.texture_ref, init_shader);
+    
+    // Then, execute render loop:
+    do {
+
+        bind_framebuffer_target(0, screen_size);
+		// Clear the screen
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // blit a to screen
+        render_texture(a.texture_ref, passthrough_shader);
+
+        // next conway step, perform onto b
+        bind_framebuffer_target(b.render_ref, fbuf_size);
+        render_texture(a.texture_ref, conway_shader);
+
+        // swap a and b
+        std::swap(a,b);
+
+		// Swap buffers
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+    } while( glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
+		   glfwWindowShouldClose(window) == 0 );
+
+}
+
+
 int main( void )
 {
+
+    conway();
+    return 0;
+
+
+
+
+
+
+
+
 	// Initialise GLFW
 	if( !glfwInit() )
 	{
