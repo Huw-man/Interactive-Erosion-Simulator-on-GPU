@@ -19,7 +19,7 @@ int main() {
 
 	vec2 vel = texture(T3_v, UV).xy;
 
-	vec2 db_dxy = vec2(dFdxFine(T1_bds.x),dFdyFine(T1_bds.x))
+	vec2 db_dxy = vec2(dFdxFine(self_bds.x),dFdyFine(self_bds.x))
 	float db_dr = length(db_dxy,db_dxy)
 	float dl_dr = length(l_xy,l_xy);
 	float sin_alpha = db/dl;
