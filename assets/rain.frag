@@ -38,6 +38,6 @@ uniform int timestep
 uniform sampler2D T1_bds; // T1_bds.x = b, T1_bds.y = d, T1_bds.z = s 
 
 void main() {
-	color.y = T1_bds.y + noise(vec3(UV,timestep))* rain_intensity; // add noise to old amount
-	color.xzw = T1_bds.xzw; // passthrough
+	color.y = texture(T1_bds,UV).y + noise(vec3(UV,timestep))* rain_intensity; // add noise to old amount
+	color.xzw = texture(T1_bds,UV).xzw; // passthrough
 }
