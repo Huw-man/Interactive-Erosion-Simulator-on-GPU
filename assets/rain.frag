@@ -1,5 +1,7 @@
 #version 330 core
 
+// This uses blit.vert
+
 in vec2 UV;
 
 out vec4 color;

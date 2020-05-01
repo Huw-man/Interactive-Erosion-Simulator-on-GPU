@@ -1,6 +1,6 @@
 #version 330 core
 
-in float source_intensity; # this is per-source
+in float source_intensity; // this is per-source
 out vec4 color;
 
 uniform sampler2D T1_bds; // T1_bds.x = b, T1_bds.y = d, T1_bds.z = s
