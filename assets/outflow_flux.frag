@@ -24,7 +24,7 @@ uniform vec2 l_xy; // l_xy.x = l_x, l_xy.y = l_y
 
 int main() {
 	vec4 self_bds = texture(T1_bds, UV);
-	float f = texture(T2_f, UV);
+	vec4 f = texture(T2_f, UV);
 	float K = min(1, self_bds.y * l_xy.x * l_xy.y / (f.x + f.y + f.z + f.w) / delta_t);
 
 	if (UV.x == 0) { // on the left boundary
