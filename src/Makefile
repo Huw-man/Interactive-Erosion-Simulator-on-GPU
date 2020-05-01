@@ -5,7 +5,7 @@ CFLAGS=-I$(IDIR)
 ODIR=obj
 LDIR =../lib
 
-LIBS=-lglew32 -lopengl32 -lglu32 -lglfw3 -lstdc++
+LIBS=-lglew32 -lopengl32 -lglu32 -lglfw3 -lgdi32 -lstdc++
 
 _DEPS = main.hpp common/shader.hpp
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
