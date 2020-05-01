@@ -113,10 +113,34 @@ void render_water_sources() {
 
 }
 
-GLuint 	rain_shader, waterSource_shader, 
-		waterSurface_shader, sedimentDeposition_shader, 
-		erosionDeposition_shader, sedimentTransportation_shader, 
-		outflowFlux_shader, evaporation_shader, velocityField_shader;
+GLuint init_shader_erosion_flat;
+
+GLuint 	rain_shader, 
+		waterSource_shader, 
+		outflowFlux_shader, 
+		waterSurface_shader, 
+		velocityField_shader, 
+		erosionDeposition_shader, 
+		sedimentTransportation_shader,
+		evaporation_shader;
+
+void init_erosion_shaders_flat() {
+	init_shader_erosion_flat = 		LoadShaders( "assets/blit.vert", "assets/noise.frag" );
+	rain_shader = 					LoadShaders( "assets/blit.vert", "assets/rain.frag" );
+	waterSource_shader = 			LoadShaders( "assets/water_sources.vert", "assets/water_sources.frag" );
+	outflowFlux_shader = 			LoadShaders( "assets/blit.vert", "assets/outflow_flux.frag" );
+	waterSurface_shader =		    LoadShaders( "assets/blit.vert", "assets/water_surface.frag" );
+	velocityField_shader = 			LoadShaders( "assets/blit.vert", "assets/velocity_field.frag" );
+	erosionDeposition_shader = 		LoadShaders( "assets/blit.vert", "assets/erosion_deposition.frag" );
+	sedimentTransportation_shader = LoadShaders( "assets/blit.vert", "assets/sediment_transportation.frag" );
+	evaporation_shader = 			LoadShaders( "assets/blit.vert", "assets/evaporation.frag" );
+}
+
+void pass_texture_uniforms(GLuint shader, int T1_binding, int T2_binding, int T3_binding) {
+	glUniform1i(glGetUniformLocation(shader, "T1_bds"), T1_binding);
+	glUniform1i(glGetUniformLocation(shader, "T2_f"),   T2_binding);
+	glUniform1i(glGetUniformLocation(shader, "T3_v"),   T3_binding);
+}
 
 // Performs a single erosion pass on the given textures, updates the references accordingly
 void erosion_pass_flat(Framebuffer *T1_bds, Framebuffer *T2_f, Framebuffer *T3_v, Framebuffer *temp) {
@@ -127,64 +151,117 @@ void erosion_pass_flat(Framebuffer *T1_bds, Framebuffer *T2_f, Framebuffer *T3_v
 	bindTexture(GL_TEXTURE1, GL_TEXTURE_2D, T2_f->texture_ref);
 	bindTexture(GL_TEXTURE2, GL_TEXTURE_2D, T3_v->texture_ref);
 	bindTexture(GL_TEXTURE3, GL_TEXTURE_2D, temp->texture_ref);
+	// corresponds to above, to help me keep track as textures get passed around
+	int T1_binding = 0, T2_binding = 1, T3_binding = 2, temp_binding = 3;
 
 	glm::ivec2 field_size(100,100);
 
-	// temp := rain + bds
 	bind_framebuffer_target(temp->render_ref, field_size);
 	glUseProgram(rain_shader);
+	pass_texture_uniforms(rain_shader, T1_binding, T2_binding, T3_binding);
+
 	// uniforms
-	// 
+	// TODO: figure out where to put these
+	float rain_intensity = 0.01;
+	int timestep = 0;
+	float delta_t = 0.016;
+
+	glUniform1f(glGetUniformLocation(rain_shader, "rain_intensity"), rain_intensity);
+	glUniform1i(glGetUniformLocation(rain_shader, "timestep"), timestep);
+	glUniform1f(glGetUniformLocation(rain_shader, "delta_t"), timestep);
+
 	render_screen();
-	// bds := sources + temp
 	bind_framebuffer_target(T1_bds->render_ref, field_size);
+	std::swap(*T1_bds, *temp);
+	std::swap(T1_binding, temp_binding);
 
-	render_water_sources();
 
-	// temp := outflow flux
+
+	// render_water_sources();
+
+	
+
+
 	bind_framebuffer_target(temp->render_ref, field_size);
 	glUseProgram(outflowFlux_shader);
+	pass_texture_uniforms(outflowFlux_shader, T1_binding, T2_binding, T3_binding);
+
 	// uniforms
-	// 
+	float A = 1.0, l = 1.0, g = 9.81;
+	glm::vec2 l_xy(1.0,1.0);
+
+	glUniform3f(glGetUniformLocation(outflowFlux_shader, "alg"), A, l, g);
+	glUniform2f(glGetUniformLocation(outflowFlux_shader, "l_xy"), l_xy.x, l_xy.y);
+	glUniform2f(glGetUniformLocation(outflowFlux_shader, "texture_size"), field_size.x, field_size.y);
+	glUniform1f(glGetUniformLocation(outflowFlux_shader, "delta_t"), delta_t);
+
+
 	render_screen();
 	std::swap(*T2_f, *temp);
+	std::swap(T2_binding, temp_binding);
 
 
 	bind_framebuffer_target(temp->render_ref, field_size);
 	glUseProgram(waterSurface_shader);
+	pass_texture_uniforms(waterSurface_shader, T1_binding, T2_binding, T3_binding);
+
 	// uniforms
-	// 
+
+	glUniform2f(glGetUniformLocation(waterSurface_shader, "l_xy"), l_xy.x, l_xy.y);
+	glUniform2f(glGetUniformLocation(waterSurface_shader, "texture_size"), field_size.x, field_size.y);
+	glUniform1f(glGetUniformLocation(waterSurface_shader, "delta_t"), delta_t);
+
 	render_screen();
 	std::swap(*T2_f, *temp);
+	std::swap(T2_binding, temp_binding);
 
 	
 	bind_framebuffer_target(temp->render_ref, field_size);
 	glUseProgram(velocityField_shader);
+	pass_texture_uniforms(velocityField_shader, T1_binding, T2_binding, T3_binding);
+
 	// uniforms
-	// 
+	glUniform2f(glGetUniformLocation(velocityField_shader, "l_xy"), l_xy.x, l_xy.y);
+	glUniform2f(glGetUniformLocation(velocityField_shader, "texture_size"), field_size.x, field_size.y);
+	glUniform1f(glGetUniformLocation(velocityField_shader, "delta_t"), delta_t);
+
 	render_screen();
 	std::swap(*T3_v, *temp);
+	std::swap(T3_binding, temp_binding);
 	
 
 	bind_framebuffer_target(temp->render_ref, field_size);
 	glUseProgram(erosionDeposition_shader);
+	pass_texture_uniforms(erosionDeposition_shader, T1_binding, T2_binding, T3_binding);
 	// uniforms
-	// 
+	float K_c = 1.0, K_s = 1.0, K_d = 1.0; 
+	glUniform2f(glGetUniformLocation(erosionDeposition_shader, "l_xy"), l_xy.x, l_xy.y);
+	glUniform3f(glGetUniformLocation(erosionDeposition_shader, "K"), K_c, K_s, K_d);
 	render_screen();
+	std::swap(*T1_bds, *temp);
+	std::swap(T1_binding, temp_binding);
 
 
 	bind_framebuffer_target(T1_bds->render_ref, field_size);
 	glUseProgram(sedimentTransportation_shader);
+	pass_texture_uniforms(sedimentTransportation_shader, T1_binding, T2_binding, T3_binding);
 	// uniforms
-	// 
+	glUniform2f(glGetUniformLocation(sedimentTransportation_shader, "texture_size"), field_size.x, field_size.y);
+	glUniform1f(glGetUniformLocation(sedimentTransportation_shader, "delta_t"), delta_t);
 	render_screen();
+	std::swap(*T1_bds, *temp);
+	std::swap(T1_binding, temp_binding);
 
 	bind_framebuffer_target(temp->render_ref, field_size);
 	glUseProgram(evaporation_shader);
+	pass_texture_uniforms(evaporation_shader, T1_binding, T2_binding, T3_binding);
+	float K_e = 1.0;
 	// uniforms
-	// 
+	glUniform1f(glGetUniformLocation(evaporation_shader, "K_e"), K_e);
+	glUniform1f(glGetUniformLocation(evaporation_shader, "delta_t"), delta_t);
 	render_screen();
 	std::swap(*T1_bds, *temp);
+	std::swap(T1_binding, temp_binding);
 }
 
 
