@@ -34,10 +34,11 @@ float noise(vec3 p){
 }
 
 uniform float rain_intensity = 0.01;
-uniform int timestep
+uniform int timestep;
 uniform sampler2D T1_bds; // T1_bds.x = b, T1_bds.y = d, T1_bds.z = s 
+uniform float delta_t;
 
 void main() {
-	color.y = texture(T1_bds,UV).y + noise(vec3(UV,timestep))* rain_intensity; // add noise to old amount
+	color.y = texture(T1_bds,UV).y + delta_t * noise(vec3(UV,timestep))* rain_intensity; // add noise to old amount
 	color.xzw = texture(T1_bds,UV).xzw; // passthrough
 }
