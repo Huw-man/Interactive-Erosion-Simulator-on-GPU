@@ -34,7 +34,6 @@ struct Framebuffer {
     GLuint texture_ref;
 };
 
-GLuint screen_uvbuffer, screen_vertexbuffer;
 
 Framebuffer gen_framebuffer(glm::ivec2 size, GLenum filter = GL_NEAREST, GLenum wrap = GL_REPEAT) {
     GLuint fbo;
@@ -69,6 +68,27 @@ void bind_framebuffer_target(GLuint dest, glm::ivec2 viewport_size) {
     glViewport(0, 0, viewport_size.x, viewport_size.y);
 }
 
+GLuint screen_vertexbuffer;
+
+void render_screen() {
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, screen_vertexbuffer);
+    glVertexAttribPointer(
+        0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+        2,                  // size
+        GL_FLOAT,           // type
+        GL_FALSE,           // normalized?
+        0,                  // stride
+        (void*)0            // array buffer offset
+    );
+
+    // Draw the triangle !
+    glDrawArrays(GL_TRIANGLES, 0, 2*3); // 12*3 indices starting at 0 -> 12 triangles
+    getErrors();
+
+    glDisableVertexAttribArray(0);
+}
+
 // Render src with shader
 void render_texture(GLuint src, GLuint shader) {
     glUseProgram(shader);
@@ -80,37 +100,105 @@ void render_texture(GLuint src, GLuint shader) {
     glUniform1i(glGetUniformLocation(shader, "tex"), 0);
     getErrors();
 
-    glEnableVertexAttribArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, screen_vertexbuffer);
-    glVertexAttribPointer(
-        0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
-        2,                  // size
-        GL_FLOAT,           // type
-        GL_FALSE,           // normalized?
-        0,                  // stride
-        (void*)0            // array buffer offset
-    );
-    getErrors();
-
-    glEnableVertexAttribArray(1);
-    glBindBuffer(GL_ARRAY_BUFFER, screen_uvbuffer);
-    glVertexAttribPointer(
-        1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
-        2,                                // size : U+V => 2
-        GL_FLOAT,                         // type
-        GL_FALSE,                         // normalized?
-        0,                                // stride
-        (void*)0                          // array buffer offset
-    );
-
-    getErrors();
-    // Draw the triangle !
-    glDrawArrays(GL_TRIANGLES, 0, 2*3); // 12*3 indices starting at 0 -> 12 triangles
-    getErrors();
-
-    glDisableVertexAttribArray(0);
-    glDisableVertexAttribArray(1);
+	render_screen();
 }
+
+void bindTexture(GLenum unit, GLenum target, GLuint tex) {
+	glActiveTexture(unit);
+	glBindTexture(target, tex);
+}
+
+GLuint water_source_verts, water_source_amounts;
+void render_water_sources() {
+
+}
+
+GLuint 	rain_shader, waterSource_shader, 
+		waterSurface_shader, sedimentDeposition_shader, 
+		erosionDeposition_shader, sedimentTransportation_shader, 
+		outflowFlux_shader, evaporation_shader, velocityField_shader;
+
+// Performs a single erosion pass on the given textures, updates the references accordingly
+void erosion_pass_flat(Framebuffer *T1_bds, Framebuffer *T2_f, Framebuffer *T3_v, Framebuffer *temp) {
+	
+	// For sake of simplicity, I'll bind all the textures at the start and just set the uniforms in the shaders accordingly
+	// I don't technically have to set the uniforms in the shaders every time, but so be it.
+	bindTexture(GL_TEXTURE0, GL_TEXTURE_2D, T1_bds->texture_ref);
+	bindTexture(GL_TEXTURE1, GL_TEXTURE_2D, T2_f->texture_ref);
+	bindTexture(GL_TEXTURE2, GL_TEXTURE_2D, T3_v->texture_ref);
+	bindTexture(GL_TEXTURE3, GL_TEXTURE_2D, temp->texture_ref);
+
+	glm::ivec2 field_size(100,100);
+
+	// temp := rain + bds
+	bind_framebuffer_target(temp->render_ref, field_size);
+	glUseProgram(rain_shader);
+	// uniforms
+	// 
+	render_screen();
+	// bds := sources + temp
+	bind_framebuffer_target(T1_bds->render_ref, field_size);
+
+	render_water_sources();
+
+	// temp := outflow flux
+	bind_framebuffer_target(temp->render_ref, field_size);
+	glUseProgram(outflowFlux_shader);
+	// uniforms
+	// 
+	render_screen();
+	std::swap(*T2_f, *temp);
+
+
+	bind_framebuffer_target(temp->render_ref, field_size);
+	glUseProgram(waterSurface_shader);
+	// uniforms
+	// 
+	render_screen();
+	std::swap(*T2_f, *temp);
+
+	
+	bind_framebuffer_target(temp->render_ref, field_size);
+	glUseProgram(velocityField_shader);
+	// uniforms
+	// 
+	render_screen();
+	std::swap(*T3_v, *temp);
+	
+
+	bind_framebuffer_target(temp->render_ref, field_size);
+	glUseProgram(erosionDeposition_shader);
+	// uniforms
+	// 
+	render_screen();
+
+
+	bind_framebuffer_target(T1_bds->render_ref, field_size);
+	glUseProgram(sedimentTransportation_shader);
+	// uniforms
+	// 
+	render_screen();
+
+	bind_framebuffer_target(temp->render_ref, field_size);
+	glUseProgram(evaporation_shader);
+	// uniforms
+	// 
+	render_screen();
+	std::swap(*T1_bds, *temp);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void conway() {
 	// Initialise GLFW
@@ -129,7 +217,7 @@ void conway() {
     glm::ivec2 screen_size{1024,768};
 
     // NxN pixel cells for game of life
-    int cell_size = 1;
+    int cell_size = 16;
     glm::ivec2 fbuf_size = screen_size/cell_size;
 
 	window = glfwCreateWindow( 1024, 768, "Conway's game of life", NULL, NULL);
@@ -172,16 +260,6 @@ void conway() {
 	glGenBuffers(1, &screen_vertexbuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, screen_vertexbuffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(screen_verts), screen_verts, GL_STATIC_DRAW);
-
-    
-    glm::vec2 screen_uvs[6] = {
-        glm::vec2(0,0), glm::vec2(1,0), glm::vec2(1,1), glm::vec2(1,1), glm::vec2(0,1), glm::vec2(0,0)
-    };
-
-	glGenBuffers(1, &screen_uvbuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, screen_uvbuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(screen_uvs), screen_uvs, GL_STATIC_DRAW);
-    getErrors();
 
 
 

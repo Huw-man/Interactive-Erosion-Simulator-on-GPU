@@ -4,9 +4,6 @@ in vec2 UV;
 
 out vec4 color;
 
-//unsure how to handle passing this val, but leaving for now
-out float d_bar;
-
 uniform sampler2D T1_bds; // T1_bds.x = b, T1_bds.y = d, T1_bds.z = s
 uniform sampler2D T2_f; // T2_f.x = f_L, T2_f.y = f_R, T2_f.z = f_T, t2_f.w = f_B
 
@@ -37,7 +34,7 @@ int main() {
 	float delta_V = delta_t * (f_from_left.y + f_from_right.x + f_from_top.w + f_from_bot.z - f_out.x - f_out.y - f_out.z - f_out.w);
 
 	vec4 self_bds = texture(T1_bds, UV);
-	d_bar = self_bds.y + delta_V / (l_xy.x * l_xy.y) / 2
 	color.y = self_bds.y + delta_V / (l_xy.x * l_xy.y)
-	color.xzw = self_bds.xzw; // passthrough
+	color.xz = self_bds.xz; // passthrough
+	color.w = self_bds.y + delta_V / (l_xy.x * l_xy.y) / 2
 }
