@@ -2,11 +2,9 @@
 
 in vec2 UV;
 
-//unsure how to handle passing this val, but leaving for now
-in float d_bar;
-
 out vec4 color;
 
+uniform sampler2D T1_bds;
 uniform sampler2D T2_f; // T2_f.x = f_L, T2_f.y = f_R, T2_f.z = f_T, t2_f.w = f_B
 uniform sampler2D T3_v; // T3_v.x = u (x component of vel), T3_v.y = v (y component of vel)
 
@@ -19,7 +17,7 @@ uniform vec2 l_xy; // l_xy.x = l_x, l_xy.y = l_y
 // uniform float l_x; // x dist between grid points
 // uniform float l_y; // y dist between grid points
 
-int main() {
+void main() {
 	vec2 left_coord = vec2(UV.x - 1.0/texture_size.x, UV.y);
 	vec4 f_from_left = texture(T2_f, left_coord);
 
@@ -33,6 +31,7 @@ int main() {
 	vec4 f_from_bot = texture(T2_f, bot_coord);
 
 	vec4 f_out = texture(T2_f, UV);
+	float d_bar = texture(T1_bds, UV).w;
 
 	float delta_W_x = (f_from_left.y - f_out.x + f_out.y - f_from_right.x) / 2;
 	color.x = delta_W_x / l_xy.y / d_bar;

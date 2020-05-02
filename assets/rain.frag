@@ -33,7 +33,7 @@ float noise(vec3 p){
     return o4.y * d.y + o4.x * (1.0 - d.y);
 }
 
-uniform float rain_intensity = 0.01;
+uniform float rain_intensity;
 uniform int timestep;
 uniform sampler2D T1_bds; // T1_bds.x = b, T1_bds.y = d, T1_bds.z = s 
 uniform float delta_t;

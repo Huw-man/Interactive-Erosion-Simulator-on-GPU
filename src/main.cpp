@@ -35,7 +35,7 @@ struct Framebuffer {
 };
 
 
-Framebuffer gen_framebuffer(glm::ivec2 size, GLenum filter = GL_NEAREST, GLenum wrap = GL_REPEAT) {
+Framebuffer gen_framebuffer(glm::ivec2 size, GLenum filter = GL_NEAREST, GLenum wrap = GL_REPEAT, GLenum texture_dat = GL_UNSIGNED_BYTE) {
     GLuint fbo;
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo); 
@@ -44,7 +44,7 @@ Framebuffer gen_framebuffer(glm::ivec2 size, GLenum filter = GL_NEAREST, GLenum 
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size.x, size.y, 0, GL_RGBA, texture_dat, NULL);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);  
@@ -115,6 +115,8 @@ void render_water_sources() {
 
 GLuint init_shader_erosion_flat;
 
+GLuint passthrough_shader;
+
 GLuint 	rain_shader, 
 		waterSource_shader, 
 		outflowFlux_shader, 
@@ -124,16 +126,30 @@ GLuint 	rain_shader,
 		sedimentTransportation_shader,
 		evaporation_shader;
 
+
+
+glm::ivec2 screen_size(1024,768);
+
 void init_erosion_shaders_flat() {
 	init_shader_erosion_flat = 		LoadShaders( "assets/blit.vert", "assets/noise.frag" );
+	glUseProgram(init_shader_erosion_flat);
 	rain_shader = 					LoadShaders( "assets/blit.vert", "assets/rain.frag" );
+	glUseProgram(rain_shader);
 	waterSource_shader = 			LoadShaders( "assets/water_sources.vert", "assets/water_sources.frag" );
+	glUseProgram(waterSource_shader);
 	outflowFlux_shader = 			LoadShaders( "assets/blit.vert", "assets/outflow_flux.frag" );
+	glUseProgram(outflowFlux_shader);
 	waterSurface_shader =		    LoadShaders( "assets/blit.vert", "assets/water_surface.frag" );
+	glUseProgram(waterSurface_shader);
 	velocityField_shader = 			LoadShaders( "assets/blit.vert", "assets/velocity_field.frag" );
+	glUseProgram(velocityField_shader);
 	erosionDeposition_shader = 		LoadShaders( "assets/blit.vert", "assets/erosion_deposition.frag" );
+	glUseProgram(erosionDeposition_shader);
 	sedimentTransportation_shader = LoadShaders( "assets/blit.vert", "assets/sediment_transportation.frag" );
+	glUseProgram(sedimentTransportation_shader);
 	evaporation_shader = 			LoadShaders( "assets/blit.vert", "assets/evaporation.frag" );
+	glUseProgram(evaporation_shader);
+	getErrors();
 }
 
 void pass_texture_uniforms(GLuint shader, int T1_binding, int T2_binding, int T3_binding) {
@@ -143,7 +159,9 @@ void pass_texture_uniforms(GLuint shader, int T1_binding, int T2_binding, int T3
 }
 
 // Performs a single erosion pass on the given textures, updates the references accordingly
-void erosion_pass_flat(Framebuffer *T1_bds, Framebuffer *T2_f, Framebuffer *T3_v, Framebuffer *temp) {
+void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *T2_f, Framebuffer *T3_v, Framebuffer *temp) {
+
+	glBlendFunc(GL_ONE, GL_ZERO);
 	
 	// For sake of simplicity, I'll bind all the textures at the start and just set the uniforms in the shaders accordingly
 	// I don't technically have to set the uniforms in the shaders every time, but so be it.
@@ -153,8 +171,6 @@ void erosion_pass_flat(Framebuffer *T1_bds, Framebuffer *T2_f, Framebuffer *T3_v
 	bindTexture(GL_TEXTURE3, GL_TEXTURE_2D, temp->texture_ref);
 	// corresponds to above, to help me keep track as textures get passed around
 	int T1_binding = 0, T2_binding = 1, T3_binding = 2, temp_binding = 3;
-
-	glm::ivec2 field_size(100,100);
 
 	bind_framebuffer_target(temp->render_ref, field_size);
 	glUseProgram(rain_shader);
@@ -262,6 +278,49 @@ void erosion_pass_flat(Framebuffer *T1_bds, Framebuffer *T2_f, Framebuffer *T3_v
 	render_screen();
 	std::swap(*T1_bds, *temp);
 	std::swap(T1_binding, temp_binding);
+
+}
+
+void erosion_loop_flat() {
+	init_erosion_shaders_flat();
+
+	glm::ivec2 field_size(100,100);
+	
+	Framebuffer T1_bds = gen_framebuffer(field_size, GL_NEAREST, GL_REPEAT, GL_FLOAT); // GL_FLOAT = HDR Framebuffers
+	Framebuffer T2_f = gen_framebuffer(field_size, GL_NEAREST, GL_REPEAT, GL_FLOAT);
+	Framebuffer T3_v = gen_framebuffer(field_size, GL_NEAREST, GL_REPEAT, GL_FLOAT);
+	Framebuffer temp = gen_framebuffer(field_size, GL_NEAREST, GL_REPEAT, GL_FLOAT);
+	
+
+	glEnable(GL_BLEND);
+
+	glUseProgram(init_shader_erosion_flat);
+	glUniform2f(glGetUniformLocation(init_shader_erosion_flat, "screen_size"), field_size.x, field_size.y);
+    getErrors();
+
+    bind_framebuffer_target(T1_bds.render_ref, field_size);
+	glClear(GL_COLOR_BUFFER_BIT);
+    render_screen();
+    
+    // Then, execute render loop:
+    do {
+		glBlendFunc(GL_ONE, GL_ZERO);
+        bind_framebuffer_target(0, screen_size);
+		// Clear the screen
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // blit T1 to screen
+        render_texture(T1_bds.texture_ref, passthrough_shader);
+
+		erosion_pass_flat(field_size, &T1_bds, &T2_f, &T3_v, &temp);
+
+		// Swap buffers
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+    } while( glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
+		   glfwWindowShouldClose(window) == 0 );
+
+
 }
 
 
@@ -275,71 +334,11 @@ void erosion_pass_flat(Framebuffer *T1_bds, Framebuffer *T2_f, Framebuffer *T3_v
 
 
 
-
-
 void conway() {
-	// Initialise GLFW
-	if( !glfwInit() )
-	{
-		fprintf( stderr, "Failed to initialize GLFW\n" );
-		exit(-1);
-	}
-
-	glfwWindowHint(GLFW_SAMPLES, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-    glm::ivec2 screen_size{1024,768};
 
     // NxN pixel cells for game of life
     int cell_size = 16;
     glm::ivec2 fbuf_size = screen_size/cell_size;
-
-	window = glfwCreateWindow( 1024, 768, "Conway's game of life", NULL, NULL);
-	if( window == NULL ){
-		fprintf( stderr, "Failed to open GLFW window. You should be using OpenGL 3.3 or greater (we're just modern like that).\n" );
-		glfwTerminate();
-		exit(-1);
-	}
-
-	glfwMakeContextCurrent(window);
-
-	// Initialize GLEW
-	glewExperimental = true; // Needed for core profile
-	if (glewInit() != GLEW_OK) {
-		fprintf(stderr, "Failed to initialize GLEW\n");
-		exit(-1);
-	}
-
-	// Ensure we can capture the escape key being pressed below
-	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
-
-	// Dark blue background
-	glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
-
-	// Enable depth test
-	glEnable(GL_DEPTH_TEST);
-	// Accept fragment if it closer to the camera than the former one
-	glDepthFunc(GL_LESS); 
-
-
-
-	GLuint VertexArrayID;
-	glGenVertexArrays(1, &VertexArrayID);
-	glBindVertexArray(VertexArrayID);
-
-    glm::vec2 screen_verts[6] = {
-        glm::vec2(-1,-1), glm::vec2(1,-1), glm::vec2(1,1), glm::vec2(1,1), glm::vec2(-1,1), glm::vec2(-1,-1)
-    };
-
-	glGenBuffers(1, &screen_vertexbuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, screen_vertexbuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(screen_verts), screen_verts, GL_STATIC_DRAW);
-
-
-
 
 	// Create and compile our GLSL program from the shaders
 	GLuint init_shader = LoadShaders( "assets/blit.vert", "assets/noise.frag" );
@@ -350,9 +349,6 @@ void conway() {
 	GLuint conway_shader = LoadShaders( "assets/blit.vert", "assets/conway.frag" );
 	glUseProgram(conway_shader);
 	glUniform2f(glGetUniformLocation(conway_shader, "screen_size"), fbuf_size.x, fbuf_size.y);
-    getErrors();
-
-    GLuint passthrough_shader = LoadShaders( "assets/blit.vert", "assets/blit.frag");
     getErrors();
 
 
@@ -392,25 +388,12 @@ void conway() {
 
 }
 
-
-int main( void )
-{
-
-    conway();
-    return 0;
-
-
-
-
-
-
-
-
+void init_glfw_opengl() {
 	// Initialise GLFW
 	if( !glfwInit() )
 	{
 		fprintf( stderr, "Failed to initialize GLFW\n" );
-		return -1;
+		exit(-1);
 	}
 
 	glfwWindowHint(GLFW_SAMPLES, 4);
@@ -420,11 +403,12 @@ int main( void )
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Open a window and create its OpenGL context
-	window = glfwCreateWindow( 1024, 768, "Tutorial 05 - Textured Cube", NULL, NULL);
+
+	window = glfwCreateWindow( screen_size.x, screen_size.y, "Erosion sim", NULL, NULL);
 	if( window == NULL ){
-		fprintf( stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible. Try the 2.1 version of the tutorials.\n" );
+		fprintf( stderr, "Failed to open GLFW window. You should be using OpenGL 3.3 or greater (we're just modern like that).\n" );
 		glfwTerminate();
-		return -1;
+		exit(-1);
 	}
 	glfwMakeContextCurrent(window);
 
@@ -432,7 +416,7 @@ int main( void )
 	glewExperimental = true; // Needed for core profile
 	if (glewInit() != GLEW_OK) {
 		fprintf(stderr, "Failed to initialize GLEW\n");
-		return -1;
+		exit(-1);
 	}
 
 	// Ensure we can capture the escape key being pressed below
@@ -450,188 +434,24 @@ int main( void )
 	glGenVertexArrays(1, &VertexArrayID);
 	glBindVertexArray(VertexArrayID);
 
-	// Create and compile our GLSL program from the shaders
-	GLuint programID = LoadShaders( "assets/TransformVertexShader.vert", "assets/TextureFragmentShader.frag" );
-
-	// Get a handle for our "MVP" uniform
-	GLuint MatrixID = glGetUniformLocation(programID, "MVP");
-
-	// Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
-	glm::mat4 Projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
-	// Camera matrix
-	glm::mat4 View       = glm::lookAt(
-								glm::vec3(4,3,3), // Camera is at (4,3,3), in World Space
-								glm::vec3(0,0,0), // and looks at the origin
-								glm::vec3(0,1,0)  // Head is up (set to 0,-1,0 to look upside-down)
-						   );
-	// Model matrix : an identity matrix (model will be at the origin)
-	glm::mat4 Model      = glm::mat4(1.0f);
-	// Our ModelViewProjection : multiplication of our 3 matrices
-	glm::mat4 MVP        = Projection * View * Model; // Remember, matrix multiplication is the other way around
-
-	// Load the texture using any two methods
-	//GLuint Texture = loadBMP_custom("uvtemplate.bmp");
-	GLuint Texture = loadDDS("assets/uvtemplate.DDS");
 	
-	// Get a handle for our "myTextureSampler" uniform
-	GLuint TextureID  = glGetUniformLocation(programID, "myTextureSampler");
+    glm::vec2 screen_verts[6] = {
+        glm::vec2(-1,-1), glm::vec2(1,-1), glm::vec2(1,1), glm::vec2(1,1), glm::vec2(-1,1), glm::vec2(-1,-1)
+    };
 
-	// Our vertices. Tree consecutive floats give a 3D vertex; Three consecutive vertices give a triangle.
-	// A cube has 6 faces with 2 triangles each, so this makes 6*2=12 triangles, and 12*3 vertices
-	static const GLfloat g_vertex_buffer_data[] = { 
-		-1.0f,-1.0f,-1.0f,
-		-1.0f,-1.0f, 1.0f,
-		-1.0f, 1.0f, 1.0f,
-		 1.0f, 1.0f,-1.0f,
-		-1.0f,-1.0f,-1.0f,
-		-1.0f, 1.0f,-1.0f,
-		 1.0f,-1.0f, 1.0f,
-		-1.0f,-1.0f,-1.0f,
-		 1.0f,-1.0f,-1.0f,
-		 1.0f, 1.0f,-1.0f,
-		 1.0f,-1.0f,-1.0f,
-		-1.0f,-1.0f,-1.0f,
-		-1.0f,-1.0f,-1.0f,
-		-1.0f, 1.0f, 1.0f,
-		-1.0f, 1.0f,-1.0f,
-		 1.0f,-1.0f, 1.0f,
-		-1.0f,-1.0f, 1.0f,
-		-1.0f,-1.0f,-1.0f,
-		-1.0f, 1.0f, 1.0f,
-		-1.0f,-1.0f, 1.0f,
-		 1.0f,-1.0f, 1.0f,
-		 1.0f, 1.0f, 1.0f,
-		 1.0f,-1.0f,-1.0f,
-		 1.0f, 1.0f,-1.0f,
-		 1.0f,-1.0f,-1.0f,
-		 1.0f, 1.0f, 1.0f,
-		 1.0f,-1.0f, 1.0f,
-		 1.0f, 1.0f, 1.0f,
-		 1.0f, 1.0f,-1.0f,
-		-1.0f, 1.0f,-1.0f,
-		 1.0f, 1.0f, 1.0f,
-		-1.0f, 1.0f,-1.0f,
-		-1.0f, 1.0f, 1.0f,
-		 1.0f, 1.0f, 1.0f,
-		-1.0f, 1.0f, 1.0f,
-		 1.0f,-1.0f, 1.0f
-	};
+	glGenBuffers(1, &screen_vertexbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, screen_vertexbuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(screen_verts), screen_verts, GL_STATIC_DRAW);
 
-	// Two UV coordinatesfor each vertex. They were created with Blender.
-	static const GLfloat g_uv_buffer_data[] = { 
-		0.000059f, 1.0f-0.000004f, 
-		0.000103f, 1.0f-0.336048f, 
-		0.335973f, 1.0f-0.335903f, 
-		1.000023f, 1.0f-0.000013f, 
-		0.667979f, 1.0f-0.335851f, 
-		0.999958f, 1.0f-0.336064f, 
-		0.667979f, 1.0f-0.335851f, 
-		0.336024f, 1.0f-0.671877f, 
-		0.667969f, 1.0f-0.671889f, 
-		1.000023f, 1.0f-0.000013f, 
-		0.668104f, 1.0f-0.000013f, 
-		0.667979f, 1.0f-0.335851f, 
-		0.000059f, 1.0f-0.000004f, 
-		0.335973f, 1.0f-0.335903f, 
-		0.336098f, 1.0f-0.000071f, 
-		0.667979f, 1.0f-0.335851f, 
-		0.335973f, 1.0f-0.335903f, 
-		0.336024f, 1.0f-0.671877f, 
-		1.000004f, 1.0f-0.671847f, 
-		0.999958f, 1.0f-0.336064f, 
-		0.667979f, 1.0f-0.335851f, 
-		0.668104f, 1.0f-0.000013f, 
-		0.335973f, 1.0f-0.335903f, 
-		0.667979f, 1.0f-0.335851f, 
-		0.335973f, 1.0f-0.335903f, 
-		0.668104f, 1.0f-0.000013f, 
-		0.336098f, 1.0f-0.000071f, 
-		0.000103f, 1.0f-0.336048f, 
-		0.000004f, 1.0f-0.671870f, 
-		0.336024f, 1.0f-0.671877f, 
-		0.000103f, 1.0f-0.336048f, 
-		0.336024f, 1.0f-0.671877f, 
-		0.335973f, 1.0f-0.335903f, 
-		0.667969f, 1.0f-0.671889f, 
-		1.000004f, 1.0f-0.671847f, 
-		0.667979f, 1.0f-0.335851f
-	};
+    passthrough_shader = LoadShaders( "assets/blit.vert", "assets/blit.frag");
+    getErrors();
+}
 
-	GLuint vertexbuffer;
-	glGenBuffers(1, &vertexbuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
 
-	GLuint uvbuffer;
-	glGenBuffers(1, &uvbuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(g_uv_buffer_data), g_uv_buffer_data, GL_STATIC_DRAW);
-
-	do{
-
-		// Clear the screen
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		// Use our shader
-		glUseProgram(programID);
-
-		// Send our transformation to the currently bound shader, 
-		// in the "MVP" uniform
-		glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-
-		// Bind our texture in Texture Unit 0
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, Texture);
-		// Set our "myTextureSampler" sampler to use Texture Unit 0
-		glUniform1i(TextureID, 0);
-
-		// 1rst attribute buffer : vertices
-		glEnableVertexAttribArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-		glVertexAttribPointer(
-			0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
-			3,                  // size
-			GL_FLOAT,           // type
-			GL_FALSE,           // normalized?
-			0,                  // stride
-			(void*)0            // array buffer offset
-		);
-
-		// 2nd attribute buffer : UVs
-		glEnableVertexAttribArray(1);
-		glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
-		glVertexAttribPointer(
-			1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
-			2,                                // size : U+V => 2
-			GL_FLOAT,                         // type
-			GL_FALSE,                         // normalized?
-			0,                                // stride
-			(void*)0                          // array buffer offset
-		);
-
-		// Draw the triangle !
-		glDrawArrays(GL_TRIANGLES, 0, 12*3); // 12*3 indices starting at 0 -> 12 triangles
-
-		glDisableVertexAttribArray(0);
-		glDisableVertexAttribArray(1);
-
-		// Swap buffers
-		glfwSwapBuffers(window);
-		glfwPollEvents();
-
-	} // Check if the ESC key was pressed or the window was closed
-	while( glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
-		   glfwWindowShouldClose(window) == 0 );
-
-	// Cleanup VBO and shader
-	glDeleteBuffers(1, &vertexbuffer);
-	glDeleteBuffers(1, &uvbuffer);
-	glDeleteProgram(programID);
-	glDeleteTextures(1, &Texture);
-	glDeleteVertexArrays(1, &VertexArrayID);
-
-	// Close OpenGL window and terminate GLFW
-	glfwTerminate();
-
-	return 0;
+int main( void )
+{
+	init_glfw_opengl();
+	erosion_loop_flat();
+    // conway();
+    return 0;
 }

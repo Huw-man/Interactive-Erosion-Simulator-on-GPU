@@ -22,7 +22,7 @@ uniform vec2 l_xy; // l_xy.x = l_x, l_xy.y = l_y
 // uniform float l_x; // x dist between grid points
 // uniform float l_y; // y dist between grid points
 
-int main() {
+void main() {
 	vec4 self_bds = texture(T1_bds, UV);
 	vec4 f = texture(T2_f, UV);
 	float K = min(1, self_bds.y * l_xy.x * l_xy.y / (f.x + f.y + f.z + f.w) / delta_t);

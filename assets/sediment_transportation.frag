@@ -11,9 +11,9 @@ uniform vec2 texture_size; // gives the width/height of texture, to scale with u
 
 uniform float delta_t;
 
-int main(){
+void main(){
 	vec4 self_bds = texture(T1_bds, UV);
-	vec2 vel = texture(T3_v, UV);
+	vec2 vel = texture(T3_v, UV).xy;
 	//scale up to xy coords so we can apply the vel*delta_t step
 	vec2 XY = vec2(UV.x * texture_size.x, UV.y * texture_size.y);
 	float x_step = XY.x - vel.x * delta_t;
