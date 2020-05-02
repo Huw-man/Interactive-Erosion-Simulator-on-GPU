@@ -7,10 +7,10 @@ LDIR =../lib
 
 LIBS=-lglew32 -lopengl32 -lglu32 -lglfw3 -lgdi32 -lstdc++
 
-_DEPS = main.hpp common/shader.hpp
+_DEPS = main.hpp common/shader.hpp common/controls.hpp common/objloader.hpp
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = main.o common/shader.o common/texture.o
+_OBJ = main.o common/shader.o common/texture.o common/controls.o common/objloader.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 
