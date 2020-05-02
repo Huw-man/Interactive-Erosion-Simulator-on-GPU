@@ -187,7 +187,7 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	glUniform1f(glGetUniformLocation(rain_shader, "delta_t"), timestep);
 
 	render_screen();
-	bind_framebuffer_target(T1_bds->render_ref, field_size);
+	bind_framebuffer_target(temp->render_ref, field_size);
 	std::swap(*T1_bds, *temp);
 	std::swap(T1_binding, temp_binding);
 
@@ -258,7 +258,7 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	std::swap(T1_binding, temp_binding);
 
 
-	bind_framebuffer_target(T1_bds->render_ref, field_size);
+	bind_framebuffer_target(temp->render_ref, field_size);
 	glUseProgram(sedimentTransportation_shader);
 	pass_texture_uniforms(sedimentTransportation_shader, T1_binding, T2_binding, T3_binding);
 	// uniforms
