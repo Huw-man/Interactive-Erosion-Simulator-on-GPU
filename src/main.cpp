@@ -301,6 +301,14 @@ void erosion_loop_flat() {
     bind_framebuffer_target(T1_bds.render_ref, field_size);
 	glClear(GL_COLOR_BUFFER_BIT);
     render_screen();
+
+    bind_framebuffer_target(T2_f.render_ref, field_size);
+	glClear(GL_COLOR_BUFFER_BIT);
+    render_screen();
+	
+    bind_framebuffer_target(T3_v.render_ref, field_size);
+	glClear(GL_COLOR_BUFFER_BIT);
+    render_screen();
     
     // Then, execute render loop:
     do {
