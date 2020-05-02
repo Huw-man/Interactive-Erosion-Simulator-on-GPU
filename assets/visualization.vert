@@ -15,11 +15,10 @@ out vec4 v_normal;
 out vec2 v_uv;
 
 void main() {
-  vec4 self_bds = texture(T1_bds, UV);
-  float height = self_bds.x + self_bds.y;
+  vec4 self_bds = texture(T1_bds, in_uv);
 
   v_position = u_model * in_position;
-  v_position.z = height; //adjusting the height to be the terrain+water level
+  v_position.z = self_bds.x + self_bds.y; //adjusting the height to be the terrain+water level
   v_normal = normalize(u_model * in_normal);
   v_uv = in_uv;
   gl_Position = u_view_projection * v_position;
