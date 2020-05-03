@@ -37,8 +37,22 @@ uniform float rain_intensity;
 uniform int timestep;
 uniform sampler2D T1_bds; // T1_bds.x = b, T1_bds.y = d, T1_bds.z = s 
 uniform float delta_t;
+uniform vec2 texture_size;
 
 void main() {
-	color.y = texture(T1_bds,UV).y + delta_t * noise(vec3(UV,timestep))* rain_intensity; // add noise to old amount
-	color.xzw = texture(T1_bds,UV).xzw; // passthrough
+    //some arbitrary code to act as a river source, for debugging
+    //to use, uncomment the block and comment out the line using noise
+/*     float radius = 10;
+    vec2 source_xy = vec2(0.75, 0.75) * texture_size;
+    vec2 xy = UV * texture_size;
+    if (length(source_xy - xy) <= radius) {
+        color.y = texture(T1_bds,UV).y + 10*delta_t; 
+    }
+    else {
+        color.y = texture(T1_bds,UV).y;
+    } */
+
+    color.y = texture(T1_bds,UV).y + delta_t * noise(vec3(UV,timestep))* rain_intensity; // add noise to old amount
+	
+    color.xzw = texture(T1_bds,UV).xzw; // passthrough
 }

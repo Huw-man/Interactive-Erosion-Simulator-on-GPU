@@ -16,8 +16,8 @@ void main(){
 	vec2 vel = texture(T3_v, UV).xy;
 	//scale up to xy coords so we can apply the vel*delta_t step
 	vec2 XY = vec2(UV.x * texture_size.x, UV.y * texture_size.y);
-	float x_step = XY.x - vel.x * delta_t;
-	float y_step = XY.y - vel.y * delta_t;
+	float x_step = clamp(XY.x - vel.x * delta_t, 0, texture_size.x);
+	float y_step = clamp(XY.y - vel.y * delta_t, 0, texture_size.y);
 
 	//remember to divide back down to sample with UV coords
 	float s_top_left = texture(T1_bds, vec2(floor(x_step) / texture_size.x, floor(y_step) / texture_size.y)).z;

@@ -157,7 +157,7 @@ void pass_texture_uniforms(GLuint shader, int T1_binding, int T2_binding, int T3
 }
 
 
-GLuint terrain_vertexbuffer, terrain_colorbuffer, terrain_uvbuffer;
+GLuint terrain_vertexbuffer, terrain_normalbuffer, terrain_uvbuffer;
 std::vector<glm::vec3> terrain_vertices;
 std::vector<glm::vec2> terrain_uvs;
 std::vector<glm::vec3> terrain_normals;
@@ -183,7 +183,7 @@ void load_terrain() {
 	glEnable(GL_CULL_FACE);
 
 	// Create and compile our GLSL program from the shaders
-	terrain_shader = LoadShaders( "assets/shaders/pipeline/render_terrain.vert", "assets/shaders/pipeline/render_terrain.frag" );
+	terrain_shader = LoadShaders( "assets/shaders/pipeline/visualization.vert", "assets/shaders/pipeline/visualization.frag" );
 
 	// Get a handle for our "MVP" uniform
 
@@ -196,8 +196,8 @@ void load_terrain() {
 	glBindBuffer(GL_ARRAY_BUFFER, terrain_vertexbuffer);
 	glBufferData(GL_ARRAY_BUFFER, terrain_vertices.size() * sizeof(glm::vec3), &terrain_vertices[0], GL_STATIC_DRAW);
 
-	glGenBuffers(1, &terrain_colorbuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, terrain_colorbuffer);
+	glGenBuffers(1, &terrain_normalbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, terrain_normalbuffer);
 	glBufferData(GL_ARRAY_BUFFER, terrain_normals.size() * sizeof(glm::vec3), &terrain_normals[0], GL_STATIC_DRAW);
 
 	glGenBuffers(1, &terrain_uvbuffer);
@@ -226,6 +226,20 @@ void render_terrain(GLuint programID) {
 	// This one is also important
 	glUniformMatrix4fv(glGetUniformLocation(programID, "MV"), 1, GL_FALSE, &(ViewMatrix*ModelMatrix)[0][0]);
 
+	// uniforms
+	glm::vec3 u_cam_pos(20, 20, 20);
+	glm::vec3 u_light_pos(0, 20, 0);
+	glm::vec3 u_light_intensity(50, 50, 50);
+	glm::vec3 water_color(0, 0, 1.0);
+	glm::vec3 terrain_color(0, 1.0, 0);
+
+	glUniform3f(glGetUniformLocation(programID, "u_cam_pos"), u_cam_pos.x, u_cam_pos.y, u_cam_pos.z);
+	glUniform3f(glGetUniformLocation(programID, "u_light_pos"), u_light_pos.x, u_light_pos.y, u_light_pos.z);
+	glUniform3f(glGetUniformLocation(programID, "u_light_intensity"), u_light_intensity.x, u_light_intensity.y, u_light_intensity.z);
+	glUniform3f(glGetUniformLocation(programID, "water_color"), water_color.x, water_color.y, water_color.z);
+	glUniform3f(glGetUniformLocation(programID, "terrain_color"), terrain_color.x, terrain_color.y, terrain_color.z);
+
+
 	// 1rst attribute buffer : vertices
 	glEnableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, terrain_vertexbuffer);
@@ -236,9 +250,9 @@ void render_terrain(GLuint programID) {
 	glBindBuffer(GL_ARRAY_BUFFER, terrain_uvbuffer);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
-	// 3rd attribute buffer : colors
+	// 3rd attribute buffer : normals
 	glEnableVertexAttribArray(2);
-	glBindBuffer(GL_ARRAY_BUFFER, terrain_colorbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, terrain_normalbuffer);
 	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
 	// Draw the triangle !
@@ -285,32 +299,28 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 
 	// uniforms
 	// TODO: figure out where to put these
-	float rain_intensity = 0.0001;
+	float rain_intensity = 1;
 	int timestep = 0;
-	float delta_t = 0.016;
+	float delta_t = 0.00016;
 
 	glUniform1f(glGetUniformLocation(rain_shader, "rain_intensity"), rain_intensity);
+	glUniform2f(glGetUniformLocation(rain_shader, "texture_size"), field_size.x, field_size.y);
 	glUniform1i(glGetUniformLocation(rain_shader, "timestep"), timestep);
-	glUniform1f(glGetUniformLocation(rain_shader, "delta_t"), timestep);
+	glUniform1f(glGetUniformLocation(rain_shader, "delta_t"), delta_t);
 
 	render_screen();
 	bind_framebuffer_target(temp->render_ref, field_size);
 	std::swap(*T1_bds, *temp);
 	std::swap(T1_binding, temp_binding);
 
-
-
 	// render_water_sources();
-
-	
-
 
 	bind_framebuffer_target(temp->render_ref, field_size);
 	glUseProgram(outflowFlux_shader);
 	pass_texture_uniforms(outflowFlux_shader, T1_binding, T2_binding, T3_binding);
 
 	// uniforms
-	float A = 1.0, l = 1.0, g = 9.81;
+	float A = 10, l = .1, g = 9.81;
 	glm::vec2 l_xy(1.0,1.0);
 
 	glUniform3f(glGetUniformLocation(outflowFlux_shader, "alg"), A, l, g);
@@ -335,8 +345,8 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	glUniform1f(glGetUniformLocation(waterSurface_shader, "delta_t"), delta_t);
 
 	render_screen();
-	std::swap(*T2_f, *temp);
-	std::swap(T2_binding, temp_binding);
+	std::swap(*T1_bds, *temp);
+	std::swap(T1_binding, temp_binding);
 
 	
 	bind_framebuffer_target(temp->render_ref, field_size);
@@ -357,7 +367,7 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	glUseProgram(erosionDeposition_shader);
 	pass_texture_uniforms(erosionDeposition_shader, T1_binding, T2_binding, T3_binding);
 	// uniforms
-	float K_c = 1.0, K_s = 1.0, K_d = 1.0; 
+	float K_c = 0.01, K_s = 0.01, K_d = 0.01; 
 	glUniform2f(glGetUniformLocation(erosionDeposition_shader, "l_xy"), l_xy.x, l_xy.y);
 	glUniform3f(glGetUniformLocation(erosionDeposition_shader, "K"), K_c, K_s, K_d);
 	render_screen();
@@ -378,7 +388,7 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	bind_framebuffer_target(temp->render_ref, field_size);
 	glUseProgram(evaporation_shader);
 	pass_texture_uniforms(evaporation_shader, T1_binding, T2_binding, T3_binding);
-	float K_e = 1.0;
+	float K_e = .01;
 	// uniforms
 	glUniform1f(glGetUniformLocation(evaporation_shader, "K_e"), K_e);
 	glUniform1f(glGetUniformLocation(evaporation_shader, "delta_t"), delta_t);
@@ -437,7 +447,7 @@ void erosion_loop_flat() {
 		pass_texture_uniforms(terrain_shader, 0, 1, 2);
         render_terrain(terrain_shader);
 
-		// erosion_pass_flat(field_size, &T1_bds, &T2_f, &T3_v, &temp);
+		erosion_pass_flat(field_size, &T1_bds, &T2_f, &T3_v, &temp);
 
 		// Swap buffers
 		glfwSwapBuffers(window);

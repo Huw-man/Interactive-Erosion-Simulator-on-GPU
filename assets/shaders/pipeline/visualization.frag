@@ -4,8 +4,8 @@ uniform vec3 u_cam_pos;
 uniform vec3 u_light_pos;
 uniform vec3 u_light_intensity;
 
-uniform vec4 water_color;
-uniform vec4 terrain_color;
+uniform vec3 water_color;
+uniform vec3 terrain_color;
 
 uniform sampler2D T1_bds; // T1_bds.x = b, T1_bds.y = d, T1_bds.z = s
 
@@ -13,15 +13,15 @@ in vec4 v_position;
 in vec4 v_normal;
 in vec2 v_uv;
 
-out vec4 out_color;
+out vec4 color;
 
-int main() {
+void main() {
 	vec4 self_bds = texture(T1_bds, v_uv);
 	float water_prop = self_bds.y / (self_bds.x + self_bds.y);
-	vec4 color = water_prop * water_color + (1 - water_prop) * terrain_color;
+	vec3 intermediate_color = water_prop * water_color + (1 - water_prop) * terrain_color;
 
 	vec3 ambient = vec3(1,1,1);
-	float k_a = .1;
+	float k_a = .5;
 	vec3 out_ambient_3 = k_a * ambient;
 
 	vec3 v_pos_3 = v_position.xyz;
@@ -32,17 +32,18 @@ int main() {
 
 	vec3 v = u_cam_pos - v_pos_3;
 	vec3 h = normalize(v + l);
-	if (self_bds.d == 0) { //no water
-		float k_s = .2; //placeholder, specular constant for terrain
+	float k_s;
+	if (self_bds.y == 0.0) { //no water
+		k_s = .1; //placeholder, specular constant for terrain
 	}
 	else {
-		float k_s = .8; //placeholder, specular constant for water
+		k_s = .8; //placeholder, specular constant for water
 	}
 	
 	int p = 48;
 
 	vec3 out_spec_3 = k_s * u_light_intensity / (length(l) * length(l)) * pow(max(0.0, dot(v_norm_3, h)), p);
 
-	out_color = vec4(out_ambient_3 + out_diff_3 + out_spec_3, 1) * color;
+	color = vec4(out_ambient_3 + out_diff_3 + out_spec_3, 1) * vec4(intermediate_color, 1);
 }
 
