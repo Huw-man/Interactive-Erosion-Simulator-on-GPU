@@ -95,7 +95,7 @@ void computeMatricesFromInputs(){
 	float FoV = initialFoV;// - 5 * glfwGetMouseWheel(); // Now GLFW 3 requires setting up a callback for this. It's a bit too complicated for this beginner's tutorial, so it's disabled instead.
 
 	// Projection matrix : 45� Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
-	ProjectionMatrix = glm::perspective(glm::radians(FoV), 4.0f / 3.0f, 0.1f, 100.0f);
+	ProjectionMatrix = glm::perspective(glm::radians(FoV), 4.0f / 3.0f, getCameraNear(), getCameraFar());
 	// Camera matrix
 	ViewMatrix       = glm::lookAt(
 								position,           // Camera is here
@@ -106,6 +106,12 @@ void computeMatricesFromInputs(){
 	// For the next frame, the "last time" will be "now"
 	lastTime = currentTime;
 }
+
+float getCameraNear() { return 0.1; }
+
+float getCameraFar() { return 100.0; }
+
+glm::vec3 getCameraPos() { return position; }
 
 glm::mat4 getViewMatrix() {
 	return ViewMatrix;

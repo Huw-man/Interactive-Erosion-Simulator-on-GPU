@@ -24,7 +24,8 @@ using namespace glm;
 #include <common/controls.hpp>
 #include <common/objloader.hpp>
 
-#include <plane_mesh.hpp>
+#include "plane_mesh.hpp"
+#include "image_texture.hpp"
 
 #define getErrors() handle_gl_errors( __LINE__ )
 
@@ -86,6 +87,8 @@ Framebuffer gen_framebuffer(glm::ivec2 size, GLenum filter = GL_NEAREST, GLenum 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);  
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 		glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, &borderColor[0]);
 
     	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, texture_refs[i], 0);
@@ -98,6 +101,14 @@ Framebuffer gen_framebuffer(glm::ivec2 size, GLenum filter = GL_NEAREST, GLenum 
 		glGenTextures(1, &depth_texture_ref);
 		glBindTexture(GL_TEXTURE_2D, depth_texture_ref);
 		glTexImage2D(GL_TEXTURE_2D, 0,GL_DEPTH_COMPONENT24, size.x, size.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+		
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);  
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth_texture_ref, 0);
 	}
 	else if (use_depth == DEPTH_RENDERBUFFER) {
@@ -223,8 +234,8 @@ std::vector<glm::vec3> terrain_vertices;
 std::vector<glm::vec2> terrain_uvs;
 std::vector<glm::vec3> terrain_normals;
 
-
-GLuint terrain_shader, water_prepass_shader, water_secondpass_shader;
+ImageTexture *dirt, *sand, *sand2;
+GLuint terrain_prepass_shader, water_prepass_shader, water_secondpass_shader;
 
 void load_terrain() {
 	// Ensure we can capture the escape key being pressed below
@@ -245,9 +256,13 @@ void load_terrain() {
 	glEnable(GL_CULL_FACE);
 
 	// Create and compile our GLSL program from the shaders
-	terrain_shader = LoadShaders( "assets/shaders/vis/visualization.vert", "assets/shaders/vis/visualization.frag" );
+	terrain_prepass_shader = LoadShaders( "assets/shaders/vis/terrain_prepass.vert", "assets/shaders/vis/terrain_prepass.frag" );
 	water_prepass_shader = LoadShaders( "assets/shaders/vis/water_prepass.vert", "assets/shaders/vis/water_prepass.frag" );
 	water_secondpass_shader = LoadShaders( "assets/shaders/vis/water_secondpass.vert", "assets/shaders/vis/water_secondpass.frag" );
+
+	dirt  = new ImageTexture("assets/textures/dirt");
+	sand  = new ImageTexture("assets/textures/sand");
+	sand2 = new ImageTexture("assets/textures/snad");
 
 	// Read our .obj file
 	bool res = loadOBJ("assets/terrain.obj", terrain_vertices, terrain_uvs, terrain_normals);
@@ -283,15 +298,17 @@ void render_terrain(GLuint programID, std::function<void()> render_mesh) {
 	// in the "MVP" uniform
 	GLuint MatrixID = glGetUniformLocation(programID, "MVP");
 	glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-	// This one is also important
+	// This one is also important for screen space stuff.
 	glUniformMatrix4fv(glGetUniformLocation(programID, "MV"), 1, GL_FALSE, &(ViewMatrix*ModelMatrix)[0][0]);
+	glUniformMatrix4fv(glGetUniformLocation(programID, "P"), 1, GL_FALSE, &(ProjectionMatrix)[0][0]);
 
 	// uniforms
-	glm::vec3 u_cam_pos(20, 20, 20);
-	glm::vec3 u_light_pos(0, 20, 0);
-	glm::vec3 u_light_intensity(50, 50, 50);
-	glm::vec3 water_color(0, 0, 1.0);
-	glm::vec3 terrain_color(0, 1.0, 0);
+	glm::vec4 u_cam_pos = glm::vec4(0);
+	glm::vec4 u_light_pos(20, 10, 0, 1);
+	u_light_pos = ViewMatrix * u_light_pos;
+	glm::vec3 u_light_intensity(200, 200, 200);
+	glm::vec3 terrain_color(154/255.0,  99/255.0,  72/255.0);
+	glm::vec3 water_color  ( 52/255.0, 133/255.0, 157/255.0);
 
 	glUniform3f(glGetUniformLocation(programID, "u_cam_pos"), u_cam_pos.x, u_cam_pos.y, u_cam_pos.z);
 	glUniform3f(glGetUniformLocation(programID, "u_light_pos"), u_light_pos.x, u_light_pos.y, u_light_pos.z);
@@ -359,38 +376,75 @@ void renderTerrainPlaneMesh() {
 	terrainPlaneMesh->render();
 }
 
-void render_visualization(glm::ivec2 screen_size, Framebuffer* T1_bds, Framebuffer* T2_f, Framebuffer* T3_v, Framebuffer *water_prepass_fbo) {
+void render_visualization(
+		glm::ivec2 screen_size, 
+		glm::ivec2 field_size, 
+		Framebuffer* T1_bds, 
+		Framebuffer* T2_f, 
+		Framebuffer* T3_v, 
+		Framebuffer *water_prepass_fbo, 
+		Framebuffer *terrain_prepass_fbo) {
 	bindTexture(GL_TEXTURE0, GL_TEXTURE_2D, T1_bds->texture_refs[0]);
 	bindTexture(GL_TEXTURE1, GL_TEXTURE_2D, T2_f->texture_refs[0]);
 	bindTexture(GL_TEXTURE2, GL_TEXTURE_2D, T3_v->texture_refs[0]);
 
 	glEnable(GL_DEPTH_TEST);
-	glBlendFunc(GL_ONE, GL_ZERO);
 	bindFramebuffer(water_prepass_fbo);
+	glBlendFunc(GL_ONE, GL_ZERO);
 	// Clear the screen
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glUseProgram(water_prepass_shader);
+	glUniform2f(glGetUniformLocation(water_prepass_shader, "texture_size"), field_size.x, field_size.y);
 	pass_texture_uniforms(water_prepass_shader, 0, 1, 2);
 	render_terrain(water_prepass_shader, &renderTerrainPlaneMesh);
 
+	bindFramebuffer(terrain_prepass_fbo);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glUseProgram(terrain_prepass_shader);
+	glUniform2f(glGetUniformLocation(terrain_prepass_shader, "texture_size"), field_size.x, field_size.y);
+	pass_texture_uniforms(terrain_prepass_shader, 0, 1, 2);
+	bindTexture(GL_TEXTURE1, GL_TEXTURE_2D, dirt ->image);
+	bindTexture(GL_TEXTURE2, GL_TEXTURE_2D, dirt ->normals);
+	bindTexture(GL_TEXTURE3, GL_TEXTURE_2D, sand ->image);
+	bindTexture(GL_TEXTURE4, GL_TEXTURE_2D, sand ->normals);
+	bindTexture(GL_TEXTURE5, GL_TEXTURE_2D, sand2->image);
+	bindTexture(GL_TEXTURE6, GL_TEXTURE_2D, sand2->normals);
+	glUniform1i(glGetUniformLocation(terrain_prepass_shader, "tex1"),       1);
+	glUniform1i(glGetUniformLocation(terrain_prepass_shader, "tex1_norms"), 2);
+	glUniform1i(glGetUniformLocation(terrain_prepass_shader, "tex2"),       3);
+	glUniform1i(glGetUniformLocation(terrain_prepass_shader, "tex2_norms"), 4);
+	glUniform1i(glGetUniformLocation(terrain_prepass_shader, "tex3"),       5);
+	glUniform1i(glGetUniformLocation(terrain_prepass_shader, "tex3_norms"), 6);
+
+	render_terrain(terrain_prepass_shader, &renderTerrainPlaneMesh);
+	getErrors();
 
 	bindFramebuffer(0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glUseProgram(terrain_shader);
-	pass_texture_uniforms(terrain_shader, 0, 1, 2);
-	render_terrain(terrain_shader, &renderTerrainPlaneMesh);
-	getErrors();
-
 	glUseProgram(water_secondpass_shader);
+	glBlendFunc(GL_ONE, GL_ZERO);
 	bindTexture(GL_TEXTURE0, GL_TEXTURE_2D, water_prepass_fbo->texture_refs[0]);
 	bindTexture(GL_TEXTURE1, GL_TEXTURE_2D, water_prepass_fbo->texture_refs[1]);
 	bindTexture(GL_TEXTURE2, GL_TEXTURE_2D, water_prepass_fbo->depth_texture_ref);
+	bindTexture(GL_TEXTURE3, GL_TEXTURE_2D, terrain_prepass_fbo->texture_refs[0]);
+	bindTexture(GL_TEXTURE4, GL_TEXTURE_2D, terrain_prepass_fbo->texture_refs[1]);
+	bindTexture(GL_TEXTURE5, GL_TEXTURE_2D, terrain_prepass_fbo->depth_texture_ref);
 	getErrors();
 
-	glUniform1i(glGetUniformLocation(water_secondpass_shader, "water_colors"),  0);
-	glUniform1i(glGetUniformLocation(water_secondpass_shader, "water_normals"), 1);
-	glUniform1i(glGetUniformLocation(water_secondpass_shader, "water_depths"), 1);
+	glUniform1i(glGetUniformLocation(water_secondpass_shader, "water_colors"),    0);
+	glUniform1i(glGetUniformLocation(water_secondpass_shader, "water_normals"),   1);
+	glUniform1i(glGetUniformLocation(water_secondpass_shader, "water_depths"),    2);
+	glUniform1i(glGetUniformLocation(water_secondpass_shader, "terrain_colors"),  3);
+	glUniform1i(glGetUniformLocation(water_secondpass_shader, "terrain_normals"), 4);
+	glUniform1i(glGetUniformLocation(water_secondpass_shader, "terrain_depths"),  5);
+	glUniform1f(glGetUniformLocation(water_secondpass_shader, "zNear"), getCameraNear());
+	glUniform1f(glGetUniformLocation(water_secondpass_shader, "zFar"),  getCameraFar() );
+
+	// So we can get ourselves back into camera space for refractions/reflections
+	glm::mat4 ip = glm::inverse(getViewMatrix());
+	glUniformMatrix4fv(glGetUniformLocation(water_secondpass_shader, "IP"), 1, GL_FALSE, &ip[0][0]);
+
 	render_screen();
 }
 
@@ -422,9 +476,9 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 
 	// uniforms
 	// TODO: figure out where to put these
-	float rain_intensity = 0.1;
+	float rain_intensity = 0.01;
 	timestep += 1;
-	float delta_t = 0.00125;
+	float delta_t = 0.001;
 
 	glUniform1f(glGetUniformLocation(rain_shader, "rain_intensity"), rain_intensity);
 	glUniform2f(glGetUniformLocation(rain_shader, "texture_size"), field_size.x, field_size.y);
@@ -442,8 +496,8 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	pass_texture_uniforms(outflowFlux_shader, T1_binding, T2_binding, T3_binding);
 
 	// uniforms
-	float A = 10.0, l = 0.1, g = 9.81;
-	glm::vec2 l_xy(0.1,0.1);
+	float A = 10.0, l = 1.0, g = 9.81;
+	glm::vec2 l_xy(1.0,1.0);
 
 	glUniform3f(glGetUniformLocation(outflowFlux_shader, "alg"), A, l, g);
 	glUniform2f(glGetUniformLocation(outflowFlux_shader, "l_xy"), l_xy.x, l_xy.y);
@@ -486,7 +540,7 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	glUseProgram(erosionDeposition_shader);
 	pass_texture_uniforms(erosionDeposition_shader, T1_binding, T2_binding, T3_binding);
 	// uniforms
-	float K_c = 0.0001, K_s = 0.0001, K_d = 0.0001; 
+	float K_c = 0.0004, K_s = 0.0004, K_d = 0.0004; 
 	glUniform2f(glGetUniformLocation(erosionDeposition_shader, "l_xy"), l_xy.x, l_xy.y);
 	glUniform3f(glGetUniformLocation(erosionDeposition_shader, "K"), K_c, K_s, K_d);
 	render_screen();
@@ -507,7 +561,7 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	bindFramebuffer(temp);
 	glUseProgram(evaporation_shader);
 	pass_texture_uniforms(evaporation_shader, T1_binding, T2_binding, T3_binding);
-	float K_e = .1;
+	float K_e = .3;
 	// uniforms
 	glUniform1f(glGetUniformLocation(evaporation_shader, "K_e"), K_e);
 	glUniform1f(glGetUniformLocation(evaporation_shader, "delta_t"), delta_t);
@@ -529,8 +583,9 @@ void erosion_loop_flat() {
 	Framebuffer T3_v =   gen_framebuffer(field_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F);
 	Framebuffer temp =   gen_framebuffer(field_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F);
 
-	// Has color *and* normal buffer, so we pass in "2". It's a dumb hack, I know.
-	Framebuffer water_prepass_fbo = gen_framebuffer(screen_size, GL_LINEAR, GL_REPEAT, GL_RGBA, glm::vec4(0), 2, DEPTH_TEXTURE);
+	// Has render targets for colors, normal, and depth.
+	Framebuffer water_prepass_fbo   = gen_framebuffer(screen_size, GL_LINEAR, GL_REPEAT, GL_RGBA, glm::vec4(0), 2, DEPTH_TEXTURE);
+	Framebuffer terrain_prepass_fbo = gen_framebuffer(screen_size, GL_LINEAR, GL_REPEAT, GL_RGBA, glm::vec4(0), 2, DEPTH_TEXTURE);
 	
     getErrors();
 
@@ -558,9 +613,10 @@ void erosion_loop_flat() {
     
     // Then, execute render loop:
     do {
-		render_visualization(screen_size, &T1_bds, &T2_f, &T3_v, &water_prepass_fbo);
+		render_visualization(screen_size, field_size, &T1_bds, &T2_f, &T3_v, &water_prepass_fbo, &terrain_prepass_fbo);
 		
-		erosion_pass_flat(field_size, &T1_bds, &T2_f, &T3_v, &temp);
+		for (int i = 0; i < 8; i++)
+			erosion_pass_flat(field_size, &T1_bds, &T2_f, &T3_v, &temp);
 
 		// Swap buffers
 		glfwSwapBuffers(window);

@@ -17,12 +17,7 @@ layout(location=0) out vec4 color;
 layout(location=1) out vec4 normal;
 
 void main() {
-	vec4 self_bds = texture(T1_bds, v_uv);
-
-    float water_height = self_bds.y;
-    float water_alpha = 1.0 - exp(-water_height);
-
-	vec3 ambient = vec3(1,1,1);
+	vec3 ambient = vec3(0.4,0.4,0.4);
 	float k_a = .5;
 	vec3 out_ambient_3 = k_a * ambient;
 
@@ -30,7 +25,7 @@ void main() {
 	vec3 v_norm_3 = v_normal.xyz;
 	vec3 l = u_light_pos - v_pos_3;
 	float k_d = 1;
-	vec3 out_diff_3 = k_d * u_light_intensity / (length(l) * length(l)) * max(0.0, dot(v_norm_3, normalize(l)));
+	vec3 out_diff_3 = k_d * u_light_intensity / (length(l) * length(l)) * max(0.0, (1.0 + dot(v_norm_3, normalize(l)))/2.0);
 
 	vec3 v = u_cam_pos - v_pos_3;
 	vec3 h = normalize(v + l);
@@ -40,7 +35,7 @@ void main() {
 
 	vec3 out_spec_3 = k_s * u_light_intensity / (length(l) * length(l)) * pow(max(0.0, dot(v_norm_3, h)), p);
 
-	color = vec4(out_ambient_3 + out_diff_3 + out_spec_3, 1) * vec4(water_color, water_alpha);
+	color = vec4(out_ambient_3 + out_diff_3 + out_spec_3, 1) * vec4(water_color, 1);
 	normal = v_normal;
 }
 
