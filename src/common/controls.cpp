@@ -8,31 +8,22 @@ extern GLFWwindow* window; // The "extern" keyword here is to access the variabl
 using namespace glm;
 
 #include "controls.hpp"
+#include <main.hpp>
+
+// Initial position : on +Z
+glm::vec3 position(0, 10, 0); 
+// Initial horizontal angle 
+float horizontalAngle = 0.0f;
+// Initial vertical angle 
+float verticalAngle = -3.14f / 4.0f;
+// Initial Field of View
+float initialFoV = 70.0f;
+
+float speed = 3.0f; // 3 units / second
+float mouseSpeed = 0.01f;
 
 glm::mat4 ViewMatrix;
 glm::mat4 ProjectionMatrix;
-
-glm::mat4 getViewMatrix(){
-	return ViewMatrix;
-}
-glm::mat4 getProjectionMatrix(){
-	return ProjectionMatrix;
-}
-
-
-// Initial position : on +Z
-glm::vec3 position = glm::vec3( 0, 10, 0); 
-// Initial horizontal angle : toward -Z
-float horizontalAngle = 0.0f;
-// Initial vertical angle : none
-float verticalAngle = - 3.14f / 2.0f;
-// Initial Field of View
-float initialFoV = 45.0f;
-
-float speed = 3.0f; // 3 units / second
-float mouseSpeed = 0.005f;
-
-
 
 void computeMatricesFromInputs(){
 
@@ -48,11 +39,11 @@ void computeMatricesFromInputs(){
 	glfwGetCursorPos(window, &xpos, &ypos);
 
 	// Reset mouse position for next frame
-	glfwSetCursorPos(window, 1024/2, 768/2);
+	glfwSetCursorPos(window, screen_size.x/2, screen_size.y/2);
 
 	// Compute new orientation
-	horizontalAngle += mouseSpeed * float(1024/2 - xpos );
-	verticalAngle   += mouseSpeed * float( 768/2 - ypos );
+	horizontalAngle += mouseSpeed * float(screen_size.x/2 - xpos );
+	verticalAngle   += mouseSpeed * float( screen_size.y/2 - ypos );
 
 	// Direction : Spherical coordinates to Cartesian coordinates conversion
 	glm::vec3 direction(
@@ -60,6 +51,8 @@ void computeMatricesFromInputs(){
 		sin(verticalAngle),
 		cos(verticalAngle) * cos(horizontalAngle)
 	);
+
+	glm::vec3 xz_direction(direction.x, 0, direction.z);
 	
 	// Right vector
 	glm::vec3 right = glm::vec3(
@@ -68,25 +61,36 @@ void computeMatricesFromInputs(){
 		cos(horizontalAngle - 3.14f/2.0f)
 	);
 	
+
 	// Up vector
 	glm::vec3 up = glm::cross( right, direction );
 
 	// Move forward
-	if (glfwGetKey( window, GLFW_KEY_UP ) == GLFW_PRESS){
-		position += direction * deltaTime * speed;
+	if (glfwGetKey( window, GLFW_KEY_W ) == GLFW_PRESS){
+		position += xz_direction * deltaTime * speed;
 	}
 	// Move backward
-	if (glfwGetKey( window, GLFW_KEY_DOWN ) == GLFW_PRESS){
-		position -= direction * deltaTime * speed;
+	if (glfwGetKey( window, GLFW_KEY_S ) == GLFW_PRESS){
+		position -= xz_direction * deltaTime * speed;
 	}
 	// Strafe right
-	if (glfwGetKey( window, GLFW_KEY_RIGHT ) == GLFW_PRESS){
+	if (glfwGetKey( window, GLFW_KEY_D ) == GLFW_PRESS){
 		position += right * deltaTime * speed;
 	}
 	// Strafe left
-	if (glfwGetKey( window, GLFW_KEY_LEFT ) == GLFW_PRESS){
+	if (glfwGetKey( window, GLFW_KEY_A ) == GLFW_PRESS){
 		position -= right * deltaTime * speed;
 	}
+	// fly up
+	if (glfwGetKey( window, GLFW_KEY_SPACE ) == GLFW_PRESS){
+		position.y += deltaTime * speed;
+	}
+	// fly down
+	if (glfwGetKey( window, GLFW_KEY_LEFT_SHIFT ) == GLFW_PRESS){
+		position.y -= deltaTime * speed;
+	}
+
+
 
 	float FoV = initialFoV;// - 5 * glfwGetMouseWheel(); // Now GLFW 3 requires setting up a callback for this. It's a bit too complicated for this beginner's tutorial, so it's disabled instead.
 
@@ -101,4 +105,12 @@ void computeMatricesFromInputs(){
 
 	// For the next frame, the "last time" will be "now"
 	lastTime = currentTime;
+}
+
+glm::mat4 getViewMatrix() {
+	return ViewMatrix;
+}
+
+glm::mat4 getProjectionMatrix() {
+	return ProjectionMatrix;
 }

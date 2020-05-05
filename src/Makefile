@@ -1,3 +1,4 @@
+PROGRAM = erosion_sim
 IDIR =.
 CC=gcc
 CFLAGS=-I$(IDIR)
@@ -18,7 +19,7 @@ $(ODIR)/%.o: %.cpp $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 default: $(OBJ)
-	$(CC) -o ../$@ $^ $(CFLAGS) $(LIBS)
+	$(CC) -o ../${PROGRAM} $^ $(CFLAGS) $(LIBS)
 
 .PHONY: clean
 
