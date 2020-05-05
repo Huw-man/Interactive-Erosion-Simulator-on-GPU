@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 #include <iostream>
+#include <functional>
 // Include GLEW
 #include <GL/glew.h>
 
@@ -21,6 +22,8 @@ using namespace glm;
 #include <common/controls.hpp>
 #include <common/objloader.hpp>
 
+#include <plane_mesh.hpp>
+
 #define getErrors() handle_gl_errors( __LINE__ )
 
 void handle_gl_errors(int LINE) {
@@ -32,18 +35,26 @@ void handle_gl_errors(int LINE) {
 }
 
 
+/*************************************************
+ *                                               *
+ *                OPENGL HELPERS                 *
+ *                                               *
+ *************************************************/
+
 struct Framebuffer {
     GLuint render_ref;
     GLuint texture_ref;
+	GLuint texture2_ref;
+	int num_textures = 1;
 };
 
 
-Framebuffer gen_framebuffer(glm::ivec2 size, GLenum filter = GL_NEAREST, GLenum wrap = GL_REPEAT, GLenum texture_dat = GL_RGBA, glm::vec4 borderColor = glm::vec4(0.0)) {
+Framebuffer gen_framebuffer(glm::ivec2 size, GLenum filter = GL_NEAREST, GLenum wrap = GL_REPEAT, GLenum texture_dat = GL_RGBA, glm::vec4 borderColor = glm::vec4(0.0), int num_textures=1) {
     GLuint fbo;
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo); 
 
-    GLuint texture;
+    GLuint texture, texture2;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     
@@ -55,7 +66,20 @@ Framebuffer gen_framebuffer(glm::ivec2 size, GLenum filter = GL_NEAREST, GLenum 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
 	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, &borderColor[0]);
     
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);   
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+
+	// This is a hack, but it's an extensible hack. For now.
+	if (num_textures == 2) {
+		glTexImage2D(GL_TEXTURE_2D, 0, texture_dat, size.x, size.y, 0, GL_RGBA, GL_FLOAT, NULL);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);  
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
+		glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, &borderColor[0]);
+		
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, texture2, 0);
+	}
     
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
 		fprintf( stderr, "Failed to create framebuffer. Ooops!.\n" );
@@ -63,13 +87,22 @@ Framebuffer gen_framebuffer(glm::ivec2 size, GLenum filter = GL_NEAREST, GLenum 
 		exit(-1);
     }
 
-    Framebuffer ret{fbo, texture};
+    Framebuffer ret{fbo, texture, texture2, num_textures};
     return ret;
 }
 
-void bind_framebuffer_target(GLuint dest, glm::ivec2 viewport_size) {
+void bind_framebuffer_target(GLuint dest, glm::ivec2 viewport_size, int num_textures=1) {
     glBindFramebuffer(GL_FRAMEBUFFER, dest);
     glViewport(0, 0, viewport_size.x, viewport_size.y);
+
+	if (dest != 0) {
+		GLenum bufs[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+		if (num_textures == 2) {
+			glDrawBuffers(2, bufs);
+		} else {
+			glDrawBuffers(1, bufs);
+		}
+	}
 }
 
 GLuint screen_vertexbuffer;
@@ -105,7 +138,11 @@ void bindTexture(GLenum unit, GLenum target, GLuint tex) {
 	glBindTexture(target, tex);
 }
 
-
+/*************************************************
+ *                                               *
+ *            SIMULATION INITIALIZATION          *
+ *                                               *
+ *************************************************/
 
 GLuint water_source_verts, water_source_amounts;
 void render_water_sources() {
@@ -131,23 +168,14 @@ glm::ivec2 screen_size(1024,768);
 
 void init_erosion_shaders_flat() {
 	init_shader_erosion_flat = 		LoadShaders( "assets/shaders/misc/height_to_r.vert", "assets/shaders/misc/height_to_r.frag" );
-	glUseProgram(init_shader_erosion_flat);
 	rain_shader = 					LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/rain.frag" );
-	glUseProgram(rain_shader);
 	waterSource_shader = 			LoadShaders( "assets/shaders/pipeline/water_sources.vert", "assets/shaders/pipeline/water_sources.frag" );
-	glUseProgram(waterSource_shader);
 	outflowFlux_shader = 			LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/outflow_flux.frag" );
-	glUseProgram(outflowFlux_shader);
 	waterSurface_shader =		    LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/water_surface.frag" );
-	glUseProgram(waterSurface_shader);
 	velocityField_shader = 			LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/velocity_field.frag" );
-	glUseProgram(velocityField_shader);
 	erosionDeposition_shader = 		LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/erosion_deposition.frag" );
-	glUseProgram(erosionDeposition_shader);
 	sedimentTransportation_shader = LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/sediment_transportation.frag" );
-	glUseProgram(sedimentTransportation_shader);
 	evaporation_shader = 			LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/evaporation.frag" );
-	glUseProgram(evaporation_shader);
 	getErrors();
 }
 
@@ -157,13 +185,13 @@ void pass_texture_uniforms(GLuint shader, int T1_binding, int T2_binding, int T3
 	glUniform1i(glGetUniformLocation(shader, "T3_v"),   T3_binding);
 }
 
-
 GLuint terrain_vertexbuffer, terrain_normalbuffer, terrain_uvbuffer;
 std::vector<glm::vec3> terrain_vertices;
 std::vector<glm::vec2> terrain_uvs;
 std::vector<glm::vec3> terrain_normals;
 
-GLuint terrain_shader;
+
+GLuint terrain_shader, water_prepass_shader, water_secondpass_shader;
 
 void load_terrain() {
 	// Ensure we can capture the escape key being pressed below
@@ -184,7 +212,9 @@ void load_terrain() {
 	glEnable(GL_CULL_FACE);
 
 	// Create and compile our GLSL program from the shaders
-	terrain_shader = LoadShaders( "assets/shaders/pipeline/visualization.vert", "assets/shaders/pipeline/visualization.frag" );
+	terrain_shader = LoadShaders( "assets/shaders/vis/visualization.vert", "assets/shaders/vis/visualization.frag" );
+	water_prepass_shader = LoadShaders( "assets/shaders/vis/water_prepass.vert", "assets/shaders/vis/water_prepass.frag" );
+	water_secondpass_shader = LoadShaders( "assets/shaders/vis/water_secondpass.vert", "assets/shaders/vis/water_secondpass.frag" );
 
 	// Get a handle for our "MVP" uniform
 
@@ -206,9 +236,7 @@ void load_terrain() {
 	glBufferData(GL_ARRAY_BUFFER, terrain_uvs.size() * sizeof(glm::vec2), &terrain_uvs[0], GL_STATIC_DRAW);
 }
 
-void render_terrain(GLuint programID) {
-	// Clear the screen
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+void render_terrain(GLuint programID, std::function<void()> render_mesh) {
 
 	// Use our shader
 	glUseProgram(programID);
@@ -217,7 +245,8 @@ void render_terrain(GLuint programID) {
 	computeMatricesFromInputs();
 	glm::mat4 ProjectionMatrix = getProjectionMatrix();
 	glm::mat4 ViewMatrix = getViewMatrix();
-	glm::mat4 ModelMatrix = glm::mat4(1.0);
+	glm::mat4 ModelMatrix(1.0);
+	ModelMatrix = glm::scale(ModelMatrix, glm::vec3(10,1,10));
 	glm::mat4 MVP = ProjectionMatrix * ViewMatrix * ModelMatrix;
 
 	// Send our transformation to the currently bound shader, 
@@ -240,7 +269,10 @@ void render_terrain(GLuint programID) {
 	glUniform3f(glGetUniformLocation(programID, "water_color"), water_color.x, water_color.y, water_color.z);
 	glUniform3f(glGetUniformLocation(programID, "terrain_color"), terrain_color.x, terrain_color.y, terrain_color.z);
 
+	render_mesh();
+}
 
+void render_obj_mesh() {
 	// 1rst attribute buffer : vertices
 	glEnableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, terrain_vertexbuffer);
@@ -264,11 +296,84 @@ void render_terrain(GLuint programID) {
 	glDisableVertexAttribArray(2);
 }
 
+/*************************************************
+ *                                               *
+ *                VISUALIZATION                  *
+ *                                               *
+ *************************************************/
+
+void PlaneMesh::makeBuffers() {
+	glGenBuffers(1, &vbuf);
+	glBindBuffer(GL_ARRAY_BUFFER, vbuf);
+	glBufferData(GL_ARRAY_BUFFER, nVerts * sizeof(float), verts, GL_STATIC_DRAW);
+
+	glGenBuffers(1, &ibuf);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibuf);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, nInds*sizeof(int), inds, GL_STATIC_DRAW);
+}
+
+void PlaneMesh::render() {
+	// 1rst attribute buffer : vertices
+	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, vbuf);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void*)0 );
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibuf);
+	glDrawElements(GL_TRIANGLE_STRIP, nInds, GL_UNSIGNED_INT, 0);
+
+	glDisableVertexAttribArray(0);
+}
+
+PlaneMesh *terrainPlaneMesh;
+void renderTerrainPlaneMesh() {
+	terrainPlaneMesh->render();
+}
+
+void render_visualization(glm::ivec2 screen_size, Framebuffer* T1_bds, Framebuffer* T2_f, Framebuffer* T3_v, Framebuffer *water_prepass_fbo) {
+	bindTexture(GL_TEXTURE0, GL_TEXTURE_2D, T1_bds->texture_ref);
+	bindTexture(GL_TEXTURE1, GL_TEXTURE_2D, T2_f->texture_ref);
+	bindTexture(GL_TEXTURE2, GL_TEXTURE_2D, T3_v->texture_ref);
+
+	glEnable(GL_DEPTH_TEST);
+	glBlendFunc(GL_ONE, GL_ZERO);
+	bind_framebuffer_target(water_prepass_fbo->render_ref, screen_size, 2);
+	// Clear the screen
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glUseProgram(water_prepass_shader);
+	pass_texture_uniforms(water_prepass_shader, 0, 1, 2);
+	render_terrain(water_prepass_shader, &renderTerrainPlaneMesh);
+
+
+	bind_framebuffer_target(0, screen_size);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glUseProgram(terrain_shader);
+	pass_texture_uniforms(terrain_shader, 0, 1, 2);
+	render_terrain(terrain_shader, &renderTerrainPlaneMesh);
+	getErrors();
+
+	glUseProgram(water_secondpass_shader);
+	bindTexture(GL_TEXTURE0, GL_TEXTURE_2D, water_prepass_fbo->texture_ref);
+	bindTexture(GL_TEXTURE1, GL_TEXTURE_2D, water_prepass_fbo->texture2_ref);
+	getErrors();
+
+	glUniform1i(glGetUniformLocation(water_secondpass_shader, "water_colors"),  0);
+	glUniform1i(glGetUniformLocation(water_secondpass_shader, "water_normals"), 1);
+	render_screen();
+}
+
+/*************************************************
+ *                                               *
+ *                  SIMULATION                   *
+ *                                               *
+ *************************************************/
+
+
 int timestep = 0;
 // Performs a single erosion pass on the given textures, updates the references accordingly
 void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *T2_f, Framebuffer *T3_v, Framebuffer *temp) {
 
-	//glBlendFunc(GL_ONE, GL_ZERO);
+	glBlendFunc(GL_ONE, GL_ZERO);
 	
 	// For sake of simplicity, I'll bind all the textures at the start and just set the uniforms in the shaders accordingly
 	// I don't technically have to set the uniforms in the shaders every time, but so be it.
@@ -285,7 +390,7 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 
 	// uniforms
 	// TODO: figure out where to put these
-	float rain_intensity = 1;
+	float rain_intensity = 0.1;
 	timestep += 1;
 	float delta_t = 0.00125;
 
@@ -386,18 +491,21 @@ void erosion_loop_flat() {
 	init_erosion_shaders_flat();
 	load_terrain();
 
-	glm::ivec2 field_size(4096,4096);
-	
+	glm::ivec2 field_size(1024,1024);
+	terrainPlaneMesh = new PlaneMesh(field_size);
+
 	Framebuffer T1_bds = gen_framebuffer(field_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F); // GL_RGBA32F = HDR Framebuffers
 	Framebuffer T2_f =   gen_framebuffer(field_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F);
 	Framebuffer T3_v =   gen_framebuffer(field_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F);
 	Framebuffer temp =   gen_framebuffer(field_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F);
 
+	// Has color *and* normal buffer, so we pass in "2". It's a dumb hack, I know.
+	Framebuffer water_prepass_fbo = gen_framebuffer(screen_size, GL_LINEAR, GL_REPEAT, GL_RGBA, glm::vec4(0), 2);
 	
     getErrors();
 
-	glDisable(GL_BLEND);
-	//glBlendFunc(GL_ONE, GL_ZERO);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_ONE, GL_ZERO);
     bind_framebuffer_target(T1_bds.render_ref, field_size);
 	glClear(GL_COLOR_BUFFER_BIT);
     bind_framebuffer_target(T2_f.render_ref, field_size);
@@ -413,24 +521,14 @@ void erosion_loop_flat() {
 	bindTexture(GL_TEXTURE1, GL_TEXTURE_2D, T2_f.texture_ref);
 	bindTexture(GL_TEXTURE2, GL_TEXTURE_2D, T3_v.texture_ref);
 	pass_texture_uniforms(init_shader_erosion_flat, 0, 1, 2);
-	render_terrain(init_shader_erosion_flat);
+	render_terrain(init_shader_erosion_flat, &render_obj_mesh);
+	getErrors();
 	std::swap(T1_bds, temp);
     
     // Then, execute render loop:
     do {
-    	getErrors();
-		//glBlendFunc(GL_ONE, GL_ZERO);
-        bind_framebuffer_target(0, screen_size);
-		// Clear the screen
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		glUseProgram(terrain_shader);
-		bindTexture(GL_TEXTURE0, GL_TEXTURE_2D, T1_bds.texture_ref);
-		bindTexture(GL_TEXTURE1, GL_TEXTURE_2D, T2_f.texture_ref);
-		bindTexture(GL_TEXTURE2, GL_TEXTURE_2D, T3_v.texture_ref);
-		pass_texture_uniforms(terrain_shader, 0, 1, 2);
-        render_terrain(terrain_shader);
-
+		render_visualization(screen_size, &T1_bds, &T2_f, &T3_v, &water_prepass_fbo);
+		
 		erosion_pass_flat(field_size, &T1_bds, &T2_f, &T3_v, &temp);
 
 		// Swap buffers
@@ -443,15 +541,11 @@ void erosion_loop_flat() {
 }
 
 
-
-
-
-
-
-
-
-
-
+/*************************************************
+ *                                               *
+ *             CONWAY'S GAME OF LIFE             *
+ *                                               *
+ *************************************************/
 
 void conway() {
 
@@ -470,12 +564,8 @@ void conway() {
 	glUniform2f(glGetUniformLocation(conway_shader, "screen_size"), fbuf_size.x, fbuf_size.y);
     getErrors();
 
-
-
-
-
-    Framebuffer a = gen_framebuffer(fbuf_size);
-    Framebuffer b = gen_framebuffer(fbuf_size);
+    Framebuffer a = gen_framebuffer(fbuf_size, GL_NEAREST, GL_REPEAT, GL_RGBA, glm::vec4(0.0));
+    Framebuffer b = gen_framebuffer(fbuf_size, GL_NEAREST, GL_REPEAT, GL_RGBA, glm::vec4(0.0));
 
     // First, render noise to a:
     bind_framebuffer_target(a.render_ref, fbuf_size);
@@ -506,6 +596,12 @@ void conway() {
 		   glfwWindowShouldClose(window) == 0 );
 
 }
+
+/*************************************************
+ *                                               *
+ *                WINDOW CREATION                *
+ *                                               *
+ *************************************************/
 
 void init_glfw_opengl() {
 	// Initialise GLFW

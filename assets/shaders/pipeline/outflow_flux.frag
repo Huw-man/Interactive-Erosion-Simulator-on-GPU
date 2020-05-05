@@ -25,7 +25,7 @@ uniform vec2 l_xy; // l_xy.x = l_x, l_xy.y = l_y
 void main() {
 	vec4 self_bds = texture(T1_bds, UV);
 	vec4 f = texture(T2_f, UV);
-	float K = clamp(self_bds.y * l_xy.x * l_xy.y / (f.x + f.y + f.z + f.w + 0.0001) / delta_t, 0.0, 1.0);
+	float K = clamp(self_bds.y * l_xy.x * l_xy.y / (f.x + f.y + f.z + f.w) / delta_t, 0.0, 1.0);
 	if (UV.x < 1.0/texture_size.x) { // on the left boundary
 		color.x = 0;
 	}

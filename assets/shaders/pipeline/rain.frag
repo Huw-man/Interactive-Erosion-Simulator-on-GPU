@@ -52,7 +52,7 @@ void main() {
         color.y = texture(T1_bds,UV).y;
     }
 
-    color.y = texture(T1_bds,UV).y + delta_t * noise(vec3(UV,timestep)) * rain_intensity; // add noise to old amount
+    color.y = texture(T1_bds,UV).y + delta_t * clamp(noise(vec3(UV,float(timestep))),0.0,1.0) * rain_intensity; // add noise to old amount
 	
     color.xzw = texture(T1_bds,UV).xzw; // passthrough
 }
