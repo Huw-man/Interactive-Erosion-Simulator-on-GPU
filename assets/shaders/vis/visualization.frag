@@ -17,7 +17,15 @@ out vec4 color;
 
 void main() {
 	vec4 self_bds = texture(T1_bds, v_uv);
-	
+	// float water_prop = self_bds.y / (self_bds.x + self_bds.y);
+	float water_prop;
+	if (self_bds.y > 0) {
+		water_prop = min(self_bds.y / 1.0 + 0.2, 1.0);
+	}
+	else {
+		water_prop = 0;
+	}
+	vec3 intermediate_color = water_prop * water_color + (1 - water_prop) * terrain_color;
 
 	vec3 ambient = vec3(1,1,1);
 	float k_a = .5;
@@ -31,12 +39,18 @@ void main() {
 
 	vec3 v = u_cam_pos - v_pos_3;
 	vec3 h = normalize(v + l);
-	float k_s = .1;
+	float k_s;
+	if (self_bds.y == 0.0) { //no water
+		k_s = .1; //placeholder, specular constant for terrain
+	}
+	else {
+		k_s = .8; //placeholder, specular constant for water
+	}
 	
 	int p = 48;
 
 	vec3 out_spec_3 = k_s * u_light_intensity / (length(l) * length(l)) * pow(max(0.0, dot(v_norm_3, h)), p);
 
-	color = vec4(out_ambient_3 + out_diff_3 + out_spec_3, 1) * vec4(terrain_color, 1);
+	color = vec4(out_ambient_3 + out_diff_3 + out_spec_3, 1) * vec4(intermediate_color, 1);
 }
 

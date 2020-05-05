@@ -25,7 +25,6 @@ uniform vec2 l_xy; // l_xy.x = l_x, l_xy.y = l_y
 void main() {
 	vec4 self_bds = texture(T1_bds, UV);
 	vec4 f = texture(T2_f, UV);
-	float K = clamp(self_bds.y * l_xy.x * l_xy.y / (f.x + f.y + f.z + f.w) / delta_t, 0.0, 1.0);
 	if (UV.x < 1.0/texture_size.x) { // on the left boundary
 		color.x = 0;
 	}
@@ -36,7 +35,7 @@ void main() {
 
 		float f_L_next = max(0, f.x + delta_t * alg.x * alg.z * delta_h_L / alg.y);
 
-		color.x = K * f_L_next;
+		color.x = f_L_next;
 	}
 	if (UV.x >  1 - (1.0/texture_size.x)) { // on the right boundary
 		color.y = 0;
@@ -48,7 +47,7 @@ void main() {
 
 		float f_R_next = max(0, f.y + delta_t * alg.x * alg.z * delta_h_R / alg.y);
 		
-		color.y = K * f_R_next;
+		color.y = f_R_next;
 	}
 	if (UV.y < (1.0/texture_size.y)) { // on the top boundary
 		color.z = 0;
@@ -60,7 +59,7 @@ void main() {
 
 		float f_T_next = max(0, f.z + delta_t * alg.x * alg.z * delta_h_T / alg.y);
 		
-		color.z = K * f_T_next;
+		color.z = f_T_next;
 	} 
 	if (UV.y > 1 - (1.0/texture_size.y)) { // on the bottom boundary
 		color.w = 0;
@@ -72,6 +71,9 @@ void main() {
 
 		float f_B_next = max(0, f.w + delta_t * alg.x * alg.z * delta_h_B / alg.y);
 		
-		color.w = K * f_B_next;
+		color.w = f_B_next;
 	}
+
+	float K = min(self_bds.y * l_xy.x * l_xy.y / (color.x + color.y + color.z + color.w) / delta_t, 1.0);
+	color = K * color;
 }
