@@ -6,4 +6,6 @@
 
 extern glm::ivec2 screen_size;
 
+void init_gui();
+
 #endif
