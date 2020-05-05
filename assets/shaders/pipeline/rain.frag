@@ -46,7 +46,7 @@ void main() {
     vec2 source_xy = vec2(0.75, 0.75) * texture_size;
     vec2 xy = UV * texture_size;
     if (length(source_xy - xy) <= radius) {
-        color.y = texture(T1_bds,UV).y + 10*delta_t; 
+        color.y = texture(T1_bds,UV).y + 1.0*delta_t; 
     }
     else {
         color.y = texture(T1_bds,UV).y;
