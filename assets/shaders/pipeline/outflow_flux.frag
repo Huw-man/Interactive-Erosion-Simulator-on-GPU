@@ -27,7 +27,7 @@ void main() {
 	vec4 f = texture(T2_f, UV);
 	float K = min(1, self_bds.y * l_xy.x * l_xy.y / (f.x + f.y + f.z + f.w + 0.000000000001) / delta_t);
 
-	if (UV.x == 0) { // on the left boundary
+	if (UV.x < 1.0/texture_size.x) { // on the left boundary
 		color.x = 0;
 	}
 	else {
@@ -39,7 +39,7 @@ void main() {
 
 		color.x = K * f_L_next;
 	}
-	if (UV.x == 1) { // on the right boundary
+	if (UV.x >  1 - (1.0/texture_size.x)) { // on the right boundary
 		color.y = 0;
 	}
 	else {
@@ -51,7 +51,7 @@ void main() {
 		
 		color.y = K * f_R_next;
 	}
-	if (UV.y == 0) { // on the top boundary
+	if (UV.y < (1.0/texture_size.y)) { // on the top boundary
 		color.z = 0;
 	}
 	else {
@@ -63,7 +63,7 @@ void main() {
 		
 		color.z = K * f_T_next;
 	} 
-	if (UV.y == 1) { // on the bottom boundary
+	if (UV.y > 1 - (1.0/texture_size.y)) { // on the bottom boundary
 		color.w = 0;
 	}
 	else {

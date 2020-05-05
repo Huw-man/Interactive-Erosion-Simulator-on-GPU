@@ -17,7 +17,8 @@ out vec4 color;
 
 void main() {
 	vec4 self_bds = texture(T1_bds, v_uv);
-	float water_prop = self_bds.y / (self_bds.x + self_bds.y);
+	// float water_prop = self_bds.y / (self_bds.x + self_bds.y);
+	float water_prop = min(self_bds.y / 1.0, 1.0);
 	vec3 intermediate_color = water_prop * water_color + (1 - water_prop) * terrain_color;
 
 	vec3 ambient = vec3(1,1,1);

@@ -38,7 +38,7 @@ struct Framebuffer {
 };
 
 
-Framebuffer gen_framebuffer(glm::ivec2 size, GLenum filter = GL_NEAREST, GLenum wrap = GL_REPEAT, GLenum texture_dat = GL_RGBA) {
+Framebuffer gen_framebuffer(glm::ivec2 size, GLenum filter = GL_NEAREST, GLenum wrap = GL_REPEAT, GLenum texture_dat = GL_RGBA, glm::vec4 borderColor = glm::vec4(0.0)) {
     GLuint fbo;
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo); 
@@ -53,6 +53,7 @@ Framebuffer gen_framebuffer(glm::ivec2 size, GLenum filter = GL_NEAREST, GLenum 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);  
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
+	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, &borderColor[0]);
     
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);   
     
@@ -263,22 +264,7 @@ void render_terrain(GLuint programID) {
 	glDisableVertexAttribArray(2);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+int timestep = 0;
 // Performs a single erosion pass on the given textures, updates the references accordingly
 void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *T2_f, Framebuffer *T3_v, Framebuffer *temp) {
 
@@ -300,8 +286,8 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	// uniforms
 	// TODO: figure out where to put these
 	float rain_intensity = 1;
-	int timestep = 0;
-	float delta_t = 0.00016;
+	timestep += 1;
+	float delta_t = 0.000125;
 
 	glUniform1f(glGetUniformLocation(rain_shader, "rain_intensity"), rain_intensity);
 	glUniform2f(glGetUniformLocation(rain_shader, "texture_size"), field_size.x, field_size.y);
@@ -309,7 +295,6 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	glUniform1f(glGetUniformLocation(rain_shader, "delta_t"), delta_t);
 
 	render_screen();
-	bind_framebuffer_target(temp->render_ref, field_size);
 	std::swap(*T1_bds, *temp);
 	std::swap(T1_binding, temp_binding);
 
@@ -327,7 +312,6 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	glUniform2f(glGetUniformLocation(outflowFlux_shader, "l_xy"), l_xy.x, l_xy.y);
 	glUniform2f(glGetUniformLocation(outflowFlux_shader, "texture_size"), field_size.x, field_size.y);
 	glUniform1f(glGetUniformLocation(outflowFlux_shader, "delta_t"), delta_t);
-
 
 	render_screen();
 	std::swap(*T2_f, *temp);
@@ -348,7 +332,7 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	std::swap(*T1_bds, *temp);
 	std::swap(T1_binding, temp_binding);
 
-	
+/*
 	bind_framebuffer_target(temp->render_ref, field_size);
 	glUseProgram(velocityField_shader);
 	pass_texture_uniforms(velocityField_shader, T1_binding, T2_binding, T3_binding);
@@ -362,22 +346,22 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	std::swap(*T3_v, *temp);
 	std::swap(T3_binding, temp_binding);
 	
-
+	
 	bind_framebuffer_target(temp->render_ref, field_size);
 	glUseProgram(erosionDeposition_shader);
 	pass_texture_uniforms(erosionDeposition_shader, T1_binding, T2_binding, T3_binding);
 	// uniforms
-	float K_c = 0.01, K_s = 0.01, K_d = 0.01; 
+	float K_c = 0.05, K_s = 0.05, K_d = 0.05; 
 	glUniform2f(glGetUniformLocation(erosionDeposition_shader, "l_xy"), l_xy.x, l_xy.y);
 	glUniform3f(glGetUniformLocation(erosionDeposition_shader, "K"), K_c, K_s, K_d);
 	render_screen();
 	std::swap(*T1_bds, *temp);
 	std::swap(T1_binding, temp_binding);
 
-
 	bind_framebuffer_target(temp->render_ref, field_size);
 	glUseProgram(sedimentTransportation_shader);
 	pass_texture_uniforms(sedimentTransportation_shader, T1_binding, T2_binding, T3_binding);
+
 	// uniforms
 	glUniform2f(glGetUniformLocation(sedimentTransportation_shader, "texture_size"), field_size.x, field_size.y);
 	glUniform1f(glGetUniformLocation(sedimentTransportation_shader, "delta_t"), delta_t);
@@ -388,26 +372,26 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	bind_framebuffer_target(temp->render_ref, field_size);
 	glUseProgram(evaporation_shader);
 	pass_texture_uniforms(evaporation_shader, T1_binding, T2_binding, T3_binding);
-	float K_e = .01;
+	float K_e = .1;
 	// uniforms
 	glUniform1f(glGetUniformLocation(evaporation_shader, "K_e"), K_e);
 	glUniform1f(glGetUniformLocation(evaporation_shader, "delta_t"), delta_t);
 	render_screen();
 	std::swap(*T1_bds, *temp);
 	std::swap(T1_binding, temp_binding);
-
+	*/
 }
 
 void erosion_loop_flat() {
 	init_erosion_shaders_flat();
 	load_terrain();
 
-	glm::ivec2 field_size(3200,3200);
+	glm::ivec2 field_size(4096,4096);
 	
-	Framebuffer T1_bds = gen_framebuffer(field_size, GL_NEAREST, GL_REPEAT, GL_RGBA32F); // GL_RGBA32F = HDR Framebuffers
-	Framebuffer T2_f =   gen_framebuffer(field_size, GL_NEAREST, GL_REPEAT, GL_RGBA32F);
-	Framebuffer T3_v =   gen_framebuffer(field_size, GL_NEAREST, GL_REPEAT, GL_RGBA32F);
-	Framebuffer temp =   gen_framebuffer(field_size, GL_NEAREST, GL_REPEAT, GL_RGBA32F);
+	Framebuffer T1_bds = gen_framebuffer(field_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F); // GL_RGBA32F = HDR Framebuffers
+	Framebuffer T2_f =   gen_framebuffer(field_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F);
+	Framebuffer T3_v =   gen_framebuffer(field_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F);
+	Framebuffer temp =   gen_framebuffer(field_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F);
 
 	
     getErrors();
