@@ -1,0 +1,9 @@
+// Include GLM
+#include <glm/glm.hpp>
+
+#ifndef MAIN_HPP
+#define MAIN_HPP
+
+extern glm::ivec2 screen_size;
+
+#endif

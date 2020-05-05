@@ -4,6 +4,8 @@
 #include <utility>
 #include <vector>
 #include <iostream>
+#include <main.hpp>
+
 // Include GLEW
 #include <GL/glew.h>
 
@@ -22,6 +24,8 @@ using namespace glm;
 #include <common/objloader.hpp>
 
 #define getErrors() handle_gl_errors( __LINE__ )
+
+glm::ivec2 screen_size(1920, 1080);
 
 void handle_gl_errors(int LINE) {
     GLenum err;
@@ -127,8 +131,6 @@ GLuint 	rain_shader,
 
 
 
-glm::ivec2 screen_size(1024,768);
-
 void init_erosion_shaders_flat() {
 	init_shader_erosion_flat = 		LoadShaders( "assets/shaders/misc/height_to_r.vert", "assets/shaders/misc/height_to_r.frag" );
 	glUseProgram(init_shader_erosion_flat);
@@ -173,7 +175,7 @@ void load_terrain() {
     
     // Set the mouse at the center of the screen
     glfwPollEvents();
-    glfwSetCursorPos(window, 1024/2, 768/2);
+    glfwSetCursorPos(window, screen_size.x / 2, screen_size.y / 2);
 
 	// Enable depth test
 	glEnable(GL_DEPTH_TEST);
@@ -185,9 +187,6 @@ void load_terrain() {
 
 	// Create and compile our GLSL program from the shaders
 	terrain_shader = LoadShaders( "assets/shaders/pipeline/visualization.vert", "assets/shaders/pipeline/visualization.frag" );
-
-	// Get a handle for our "MVP" uniform
-
 
 	// Read our .obj file
 	bool res = loadOBJ("assets/terrain.obj", terrain_vertices, terrain_uvs, terrain_normals);
@@ -205,6 +204,7 @@ void load_terrain() {
 	glBindBuffer(GL_ARRAY_BUFFER, terrain_uvbuffer);
 	glBufferData(GL_ARRAY_BUFFER, terrain_uvs.size() * sizeof(glm::vec2), &terrain_uvs[0], GL_STATIC_DRAW);
 }
+
 
 void render_terrain(GLuint programID) {
 	// Clear the screen
