@@ -475,6 +475,8 @@ float K_e = 0.01;
 float A = 1.0, l = 0.1, g = 9.81;
 glm::vec2 l_xy(1.0,1.0);
 
+int run_sim = 1; // 0 = restart sim, 1 = run sim, 2 = exit completely
+
 // Performs a single erosion pass on the given textures, updates the references accordingly
 void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *T2_f, Framebuffer *T3_v, Framebuffer *temp) {
 
@@ -596,6 +598,7 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 }
 
 void erosion_loop_flat() {
+	run_sim = 1;
 	init_erosion_shaders_flat();
 	load_terrain();
 
@@ -636,6 +639,7 @@ void erosion_loop_flat() {
 	std::swap(T1_bds, temp);
     
 	init_gui();
+	init_controls();
 	getErrors();
 
     // Then, execute render loop:
@@ -658,16 +662,13 @@ void erosion_loop_flat() {
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 		getErrors();
-    } while( glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
-		   glfwWindowShouldClose(window) == 0 );
 
-	// Cleanup
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
+		if (glfwGetKey(window, GLFW_KEY_ESCAPE ) == GLFW_PRESS) {
+			run_sim = 2;
+		}
+    } while(run_sim == 1);
 
-	glfwDestroyWindow(window);
-    glfwTerminate();
+	
 }
 
 
@@ -704,7 +705,6 @@ void conway() {
     
     // Then, execute render loop:
     do {
-
         bindFramebuffer(0);
 		// Clear the screen
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -825,6 +825,9 @@ void gui_window() {
 	ImGui::InputFloat("l: length of pipe", &l, 0.01, 0.1, "%.2f", power);
 	ImGui::InputFloat("g: gravity", &g, 0.01, 1, "%.2f", power);
 	ImGui::InputFloat2("L_x, L_y", glm::value_ptr(l_xy), 3);
+	if (ImGui::Button("restart")) {
+		run_sim = 0;
+	}
 
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
@@ -832,9 +835,17 @@ void gui_window() {
 
 int main( void )
 {
-	init_glfw_opengl();
-	// load_terrain();
-	erosion_loop_flat();
+	while(run_sim != 2) {
+		init_glfw_opengl();
+		erosion_loop_flat();
+		// Cleanup
+		ImGui_ImplOpenGL3_Shutdown();
+		ImGui_ImplGlfw_Shutdown();
+		ImGui::DestroyContext();
+
+		glfwDestroyWindow(window);
+		glfwTerminate();
+	}
     // conway();
     return 0;
 }

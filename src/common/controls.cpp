@@ -7,8 +7,14 @@ extern GLFWwindow* window; // The "extern" keyword here is to access the variabl
 #include <glm/gtc/matrix_transform.hpp>
 using namespace glm;
 
+#include <iostream>
 #include "controls.hpp"
 #include <main.hpp>
+// gui
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_impl_opengl3.h>
+#include <imgui/imgui_internal.h>
 
 // Initial position : on +Z
 glm::vec3 position(0, 10, 0); 
@@ -24,8 +30,29 @@ float mouseSpeed = 0.01f;
 
 glm::mat4 ViewMatrix;
 glm::mat4 ProjectionMatrix;
-
+double xpos, ypos;
 bool pan_toggle = false;
+
+
+void e_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_E && action == GLFW_PRESS) {
+		pan_toggle = !pan_toggle;
+		if (pan_toggle) {
+			glfwSetCursorPos(window, screen_size.x/2, screen_size.y/2);
+			xpos = screen_size.x/2;
+			ypos = screen_size.y/2;
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		} else {
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		}
+	}
+}
+
+// bind key callback
+void init_controls() {
+	glfwSetKeyCallback(window, e_key_callback);
+}
 
 void computeMatricesFromInputs(){
 
@@ -37,22 +64,31 @@ void computeMatricesFromInputs(){
 	float deltaTime = float(currentTime - lastTime);
 
 	// Get mouse position
-	double xpos, ypos;
 	glfwGetCursorPos(window, &xpos, &ypos);
 
-	int pan_state = glfwGetKey(window, GLFW_KEY_E);
-	if (pan_state == GLFW_PRESS) {
-		pan_toggle = !pan_toggle;
-		if (pan_toggle) {
-			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-			glfwSetCursorPos(window, screen_size.x/2, screen_size.y/2);
-			xpos = screen_size.x/2;
-			ypos = screen_size.y/2;
-			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-		} else {
-			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-		}
-	}
+	// if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && ImGui::GetIO().WantCaptureMouse) {
+	// 	// glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+	// 	// glfwSetCursorPos(window, screen_size.x/2, screen_size.y/2);
+	// 	// xpos = screen_size.x/2;
+	// 	// ypos = screen_size.y/2;
+	// 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	// 	pan_toggle = true;
+	// } else {
+	// 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	// }
+
+	// int pan_state = glfwGetKey(window, GLFW_KEY_E);
+	// if (pan_state == GLFW_RELEASE && !ImGui::GetIO().WantCaptureMouse) {
+	// 	pan_toggle = !pan_toggle;
+	// 	if (pan_toggle) {
+	// 		glfwSetCursorPos(window, screen_size.x/2, screen_size.y/2);
+	// 		xpos = screen_size.x/2;
+	// 		ypos = screen_size.y/2;
+	// 		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	// 	} else {
+	// 		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	// 	}
+	// }
 	
 	if (pan_toggle) {
 		// Reset mouse position for next frame
