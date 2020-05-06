@@ -25,6 +25,8 @@ float mouseSpeed = 0.01f;
 glm::mat4 ViewMatrix;
 glm::mat4 ProjectionMatrix;
 
+bool pan_toggle = false;
+
 void computeMatricesFromInputs(){
 
 	// glfwGetTime is called only once, the first time this function is called
@@ -38,12 +40,28 @@ void computeMatricesFromInputs(){
 	double xpos, ypos;
 	glfwGetCursorPos(window, &xpos, &ypos);
 
-	// Reset mouse position for next frame
-	glfwSetCursorPos(window, screen_size.x/2, screen_size.y/2);
-
-	// Compute new orientation
-	horizontalAngle += mouseSpeed * float(screen_size.x/2 - xpos );
-	verticalAngle   += mouseSpeed * float( screen_size.y/2 - ypos );
+	int pan_state = glfwGetKey(window, GLFW_KEY_E);
+	if (pan_state == GLFW_PRESS) {
+		pan_toggle = !pan_toggle;
+		if (pan_toggle) {
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+			glfwSetCursorPos(window, screen_size.x/2, screen_size.y/2);
+			xpos = screen_size.x/2;
+			ypos = screen_size.y/2;
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		} else {
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		}
+	}
+	
+	if (pan_toggle) {
+		// Reset mouse position for next frame
+		glfwSetCursorPos(window, screen_size.x/2, screen_size.y/2);
+		
+		// Compute new orientation
+		horizontalAngle += mouseSpeed * float(screen_size.x / 2 - xpos );
+		verticalAngle   += mouseSpeed * float(screen_size.y / 2 - ypos );
+	}
 
 	// Direction : Spherical coordinates to Cartesian coordinates conversion
 	glm::vec3 direction(

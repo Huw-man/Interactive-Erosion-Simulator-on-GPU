@@ -5,6 +5,7 @@
 #include <vector>
 #include <iostream>
 #include <functional>
+#include <string>
 #include <main.hpp>
 
 // Include GLEW
@@ -246,7 +247,7 @@ void load_terrain() {
 	// Ensure we can capture the escape key being pressed below
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
     // Hide the mouse and enable unlimited mouvement
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     
     // Set the mouse at the center of the screen
     glfwPollEvents();
@@ -459,8 +460,13 @@ void render_visualization(
  *                                               *
  *************************************************/
 
-
+// simulation constants, editable from gui
 int timestep = 0;
+float rain_intensity = 0.01;
+float delta_t = 0.001;
+float K_c = 0.0004, K_s = 0.0004, K_d = 0.0004;
+float K_e = .3;
+
 // Performs a single erosion pass on the given textures, updates the references accordingly
 void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *T2_f, Framebuffer *T3_v, Framebuffer *temp) {
 
@@ -480,10 +486,7 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	pass_texture_uniforms(rain_shader, T1_binding, T2_binding, T3_binding);
 
 	// uniforms
-	// TODO: figure out where to put these
-	float rain_intensity = 0.01;
 	timestep += 1;
-	float delta_t = 0.001;
 
 	glUniform1f(glGetUniformLocation(rain_shader, "rain_intensity"), rain_intensity);
 	glUniform2f(glGetUniformLocation(rain_shader, "texture_size"), field_size.x, field_size.y);
@@ -545,7 +548,6 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	glUseProgram(erosionDeposition_shader);
 	pass_texture_uniforms(erosionDeposition_shader, T1_binding, T2_binding, T3_binding);
 	// uniforms
-	float K_c = 0.0004, K_s = 0.0004, K_d = 0.0004; 
 	glUniform2f(glGetUniformLocation(erosionDeposition_shader, "l_xy"), l_xy.x, l_xy.y);
 	glUniform3f(glGetUniformLocation(erosionDeposition_shader, "K"), K_c, K_s, K_d);
 	render_screen();
@@ -566,7 +568,6 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	bindFramebuffer(temp);
 	glUseProgram(evaporation_shader);
 	pass_texture_uniforms(evaporation_shader, T1_binding, T2_binding, T3_binding);
-	float K_e = .3;
 	// uniforms
 	glUniform1f(glGetUniformLocation(evaporation_shader, "K_e"), K_e);
 	glUniform1f(glGetUniformLocation(evaporation_shader, "delta_t"), delta_t);
@@ -618,11 +619,6 @@ void erosion_loop_flat() {
     
 	init_gui();
 
-	// Our state
-    bool show_demo_window = true;
-    bool show_another_window = false;
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
     // Then, execute render loop:
     do {
 		render_visualization(screen_size, field_size, &T1_bds, &T2_f, &T3_v, &water_prepass_fbo, &terrain_prepass_fbo);
@@ -631,29 +627,7 @@ void erosion_loop_flat() {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-		ImGui::ShowDemoWindow(&show_demo_window);
-		{
-            static float f = 0.0f;
-            static int counter = 0;
-
-            ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-            ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-            ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-            ImGui::Checkbox("Another Window", &show_another_window);
-
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-            ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-            if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-                counter++;
-            ImGui::SameLine();
-            ImGui::Text("counter = %d", counter);
-
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-            ImGui::End();
-        }
-
+		gui_window();
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -804,6 +778,26 @@ void init_gui() {
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init((char *)glGetString(GL_NUM_SHADING_LANGUAGE_VERSIONS));
+}
+
+void gui_window() {
+	ImGui::Begin("Controls");
+
+	ImGui::Text("w, a, s, d to move\nSpace: fly up, L_Shift: fly down\ne to toggle camera pan");
+
+	float step = 1.0e-5f;
+	float step_fast = 0.1f;
+	const char* format = "%.5f";
+	float power = 1.0f;
+	ImGui::InputFloat("rain_intensity", &rain_intensity, step, step_fast, format, power);
+	ImGui::InputFloat("delta_t", &delta_t, step, step_fast, format, power);
+	ImGui::InputFloat("K_c:sediment capacity", &K_c, step, step_fast, format, power);
+	ImGui::InputFloat("K_s:Dissolving constant ", &K_s, step, step_fast, format, power);
+	ImGui::InputFloat("K_d:Deposition constant ", &K_d, step, step_fast, format, power);
+	ImGui::InputFloat("K_e:Evaporation Constant", &K_e, step, step_fast, format, power);
+
+	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+	ImGui::End();
 }
 
 int main( void )
