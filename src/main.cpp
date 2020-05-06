@@ -294,7 +294,7 @@ void render_terrain(GLuint programID, std::function<void()> render_mesh) {
 	glUseProgram(programID);
 
 	// Compute the MVP matrix from keyboard and mouse input
-	computeMatricesFromInputs();
+	// computeMatricesFromInputs();
 	glm::mat4 ProjectionMatrix = getProjectionMatrix();
 	glm::mat4 ViewMatrix = getViewMatrix();
 	glm::mat4 ModelMatrix(1.0);
@@ -391,6 +391,7 @@ void render_visualization(
 		Framebuffer* T3_v, 
 		Framebuffer *water_prepass_fbo, 
 		Framebuffer *terrain_prepass_fbo) {
+	getErrors();
 	bindTexture(GL_TEXTURE0, GL_TEXTURE_2D, T1_bds->texture_refs[0]);
 	bindTexture(GL_TEXTURE1, GL_TEXTURE_2D, T2_f->texture_refs[0]);
 	bindTexture(GL_TEXTURE2, GL_TEXTURE_2D, T3_v->texture_refs[0]);
@@ -404,6 +405,7 @@ void render_visualization(
 	glUniform2f(glGetUniformLocation(water_prepass_shader, "texture_size"), field_size.x, field_size.y);
 	pass_texture_uniforms(water_prepass_shader, 0, 1, 2);
 	render_terrain(water_prepass_shader, &renderTerrainPlaneMesh);
+	getErrors();
 
 	bindFramebuffer(terrain_prepass_fbo);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -461,13 +463,16 @@ void render_visualization(
  *                                               *
  *************************************************/
 
+// some constants for our rain simulation
+glm::vec2 bucket_position(0.5,0.5);
+
 // simulation constants, editable from gui
 int timestep = 0;
-float rain_intensity = 0.1;
-float delta_t = 0.0001;
-float K_c = 0.0001, K_s = 0.0001, K_d = 0.0001;
-float K_e = .3;
-float A = 10.0, l = 1.0, g = 9.81;
+float rain_intensity = 0.003;
+float delta_t = 0.0005/2;
+float K_c = 0.0003, K_s = 0.0003, K_d = 0.0003;
+float K_e = 0.04;
+float A = 1.0, l = 0.1, g = 9.81;
 glm::vec2 l_xy(1.0,1.0);
 
 // Performs a single erosion pass on the given textures, updates the references accordingly
@@ -496,7 +501,16 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	glUniform1i(glGetUniformLocation(rain_shader, "timestep"), timestep);
 	glUniform1f(glGetUniformLocation(rain_shader, "delta_t"), delta_t);
 
+	if (timestep % 160 == 0) {
+		bucket_position = glm::vec2(rand()/(float)RAND_MAX, rand()/(float)RAND_MAX);
+	}
+
+	glUniform2f(glGetUniformLocation(rain_shader, "bucket_position"), bucket_position.x, bucket_position.y);
+	glUniform1f(glGetUniformLocation(rain_shader, "drop_bucket"), 1.0f);
+	getErrors();
+
 	render_screen();
+	getErrors();
 	std::swap(*T1_bds, *temp);
 	std::swap(T1_binding, temp_binding);
 
@@ -549,11 +563,13 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	glUseProgram(erosionDeposition_shader);
 	pass_texture_uniforms(erosionDeposition_shader, T1_binding, T2_binding, T3_binding);
 	// uniforms
+	glUniform2f(glGetUniformLocation(erosionDeposition_shader, "texture_size"), field_size.x, field_size.y);
 	glUniform2f(glGetUniformLocation(erosionDeposition_shader, "l_xy"), l_xy.x, l_xy.y);
 	glUniform3f(glGetUniformLocation(erosionDeposition_shader, "K"), K_c, K_s, K_d);
 	render_screen();
 	std::swap(*T1_bds, *temp);
 	std::swap(T1_binding, temp_binding);
+	getErrors();
 	
 
 	bindFramebuffer(temp);
@@ -575,6 +591,7 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	render_screen();
 	std::swap(*T1_bds, *temp);
 	std::swap(T1_binding, temp_binding);
+	getErrors();
 	
 }
 
@@ -582,7 +599,7 @@ void erosion_loop_flat() {
 	init_erosion_shaders_flat();
 	load_terrain();
 
-	glm::ivec2 field_size(1024,1024);
+	glm::ivec2 field_size(4096,4096);
 	terrainPlaneMesh = new PlaneMesh(field_size);
 
 	Framebuffer T1_bds = gen_framebuffer(field_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F); // GL_RGBA32F = HDR Framebuffers
@@ -605,6 +622,7 @@ void erosion_loop_flat() {
 	glClear(GL_COLOR_BUFFER_BIT);
 	bindFramebuffer(&T3_v);
 	glClear(GL_COLOR_BUFFER_BIT);
+	getErrors();
 
 	glUseProgram(init_shader_erosion_flat);
     bindFramebuffer(&temp);
@@ -615,15 +633,16 @@ void erosion_loop_flat() {
 	bindTexture(GL_TEXTURE2, GL_TEXTURE_2D, T3_v.texture_refs[0]);
 	pass_texture_uniforms(init_shader_erosion_flat, 0, 1, 2);
 	render_terrain(init_shader_erosion_flat, &render_obj_mesh);
-	getErrors();
 	std::swap(T1_bds, temp);
     
 	init_gui();
+	getErrors();
 
     // Then, execute render loop:
     do {
+		computeMatricesFromInputs();
 		render_visualization(screen_size, field_size, &T1_bds, &T2_f, &T3_v, &water_prepass_fbo, &terrain_prepass_fbo);
-
+		
 		// Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -632,12 +651,13 @@ void erosion_loop_flat() {
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-		for (int i = 0; i < 8; i++)
+		for (int i = 0; i < 1; i++)
 			erosion_pass_flat(field_size, &T1_bds, &T2_f, &T3_v, &temp);
 
 		// Swap buffers
 		glfwSwapBuffers(window);
 		glfwPollEvents();
+		getErrors();
     } while( glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
 		   glfwWindowShouldClose(window) == 0 );
 
