@@ -13,16 +13,27 @@ uniform vec2 l_xy; // l_xy.x = l_x, l_xy.y = l_y
 //uniform float K_c; //sediment capacity constant
 //uniform float K_s; //dissolving constant
 //uniform float K_d; //deposition constant
+uniform vec2 texture_size;
+
+float find_sin_alpha() {
+	float self_b = texture(T1_bds, UV).x;
+	float r_b = texture(T1_bds, UV + vec2(1.0 / texture_size.x, 0)).x;
+	float l_b = texture(T1_bds, UV - vec2(1.0 / texture_size.x, 0)).x;
+	float d_b = texture(T1_bds, UV + vec2(0, 1.0 / texture_size.y)).x;
+	float u_b = texture(T1_bds, UV - vec2(0, 1.0 / texture_size.y)).x;
+
+	float dbdx = (r_b-l_b) / (2.0/texture_size.x);
+	float dbdy = (r_b-l_b) / (2.0/texture_size.y);
+
+	return sqrt(dbdx*dbdx+dbdy*dbdy)/sqrt(1+dbdx*dbdx+dbdy*dbdy);
+}
 
 void main() {
 	vec4 self_bds = texture(T1_bds, UV);
-	if (self_bds.y > 0.001) {
+	if (self_bds.y > 0.0001) {
 		vec2 vel = texture(T3_v, UV).xy;
 
-		vec2 db_dxy = vec2(dFdx(self_bds.x),dFdy(self_bds.x));
-		float db_dr = length(db_dxy);
-		float dl_dr = length(l_xy);
-		float sin_alpha = clamp(db_dr/dl_dr, 0.3, 1);
+		float sin_alpha = find_sin_alpha();
 
 		float C = K.x * sin_alpha * length(vel);
 

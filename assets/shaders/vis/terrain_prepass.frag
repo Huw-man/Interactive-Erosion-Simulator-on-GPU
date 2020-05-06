@@ -17,6 +17,9 @@ uniform sampler2D tex2;
 uniform sampler2D tex2_norms;
 uniform sampler2D tex3;
 uniform sampler2D tex3_norms;
+
+uniform vec2 texture_size;
+
 uniform mat4 MV;
 
 layout(location=0) out vec4 color;
@@ -57,6 +60,11 @@ float perlinFractal(vec2 m) {
 }
 
 void main() {
+
+	if (v_uv.x < 1.0/texture_size.x || v_uv.x > 1.0-1.0/texture_size.x || v_uv.y < 1.0/texture_size.y || v_uv.y > 1.0-1.0/texture_size.y) {
+		discard;
+	}
+
 	vec3 ambient = vec3(1.0);
 	float k_a = .5;
 	vec3 out_ambient_3 = k_a * ambient;

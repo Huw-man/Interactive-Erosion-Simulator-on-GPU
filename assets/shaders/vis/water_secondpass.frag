@@ -33,8 +33,8 @@ void main() {
 
     float ray_depth = linearizeDepth(t_depth) - linearizeDepth(w_depth);
 
-    if (ray_depth > 0.0001) {
-        float alph = (1.0 - exp(-ray_depth))*0.8+0.2*smoothstep(0.0,0.01,ray_depth);
+    if (ray_depth > 0.0) {
+        float alph = (1.0 - exp(-ray_depth))*0.4+0.3*clamp(ray_depth*1000.0, 0, 1);
         color = mix(terrain_col, water_col, alph);
     }
     else {

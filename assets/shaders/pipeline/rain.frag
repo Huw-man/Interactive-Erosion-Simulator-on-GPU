@@ -39,20 +39,20 @@ uniform sampler2D T1_bds; // T1_bds.x = b, T1_bds.y = d, T1_bds.z = s
 uniform float delta_t;
 uniform vec2 texture_size;
 
+uniform vec2 bucket_position;
+uniform float drop_bucket;
+
 void main() {
     //some arbitrary code to act as a river source, for debugging
     //to use, uncomment the block and comment out the line using noise
-    // float radius = 10;
-    // vec2 source_xy = vec2(0.75, 0.75) * texture_size;
-    // vec2 xy = UV * texture_size;
-    // if (length(source_xy - xy) <= radius) {
-    //     color.y = texture(T1_bds,UV).y + 1000.0*delta_t; 
-    // }
-    // else {
-    //     color.y = texture(T1_bds,UV).y;
-    // }
+    float radius = 0.01;
+    vec2 xy = UV;
+    float frc = 0.0001;
+    if (length(bucket_position - xy) <= radius) {
+        frc = 300.0; 
+    }
 
-    color.y = texture(T1_bds,UV).y + delta_t * clamp(noise(vec3(UV,float(timestep))),0.0,1.0) * rain_intensity; // add noise to old amount
+    color.y = texture(T1_bds,UV).y + frc *  delta_t * clamp(noise(vec3(UV,float(timestep))),0.0,1.0) * rain_intensity; // add noise to old amount
 	
     color.xzw = texture(T1_bds,UV).xzw; // passthrough
 }

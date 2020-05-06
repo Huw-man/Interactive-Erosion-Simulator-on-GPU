@@ -468,10 +468,10 @@ glm::vec2 bucket_position(0.5,0.5);
 
 // simulation constants, editable from gui
 int timestep = 0;
-float rain_intensity = 0.003;
-float delta_t = 0.0005/2;
-float K_c = 0.0003, K_s = 0.0003, K_d = 0.0003;
-float K_e = 0.04;
+float rain_intensity = 0.005;
+float delta_t = 0.0005;
+float K_c = 0.0002, K_s = 0.0002, K_d = 0.0002;
+float K_e = 0.01;
 float A = 1.0, l = 0.1, g = 9.81;
 glm::vec2 l_xy(1.0,1.0);
 
@@ -599,7 +599,7 @@ void erosion_loop_flat() {
 	init_erosion_shaders_flat();
 	load_terrain();
 
-	glm::ivec2 field_size(4096,4096);
+	glm::ivec2 field_size(1024,1024);
 	terrainPlaneMesh = new PlaneMesh(field_size);
 
 	Framebuffer T1_bds = gen_framebuffer(field_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F); // GL_RGBA32F = HDR Framebuffers
@@ -651,7 +651,7 @@ void erosion_loop_flat() {
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-		for (int i = 0; i < 1; i++)
+		for (int i = 0; i < 8; i++)
 			erosion_pass_flat(field_size, &T1_bds, &T2_f, &T3_v, &temp);
 
 		// Swap buffers

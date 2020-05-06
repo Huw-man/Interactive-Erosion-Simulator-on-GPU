@@ -13,10 +13,19 @@ in vec4 v_position;
 in vec4 v_normal;
 in vec2 v_uv;
 
+uniform vec2 texture_size;
+
 layout(location=0) out vec4 color;
 layout(location=1) out vec4 normal;
 
 void main() {
+
+	if (v_uv.x < 1.0/texture_size.x || v_uv.x > 1.0-1.0/texture_size.x || v_uv.y < 1.0/texture_size.y || v_uv.y > 1.0-1.0/texture_size.y) {
+		discard;
+	}
+
+	vec4 self_bds = texture(T1_bds, v_uv);
+
 	vec3 ambient = vec3(0.4,0.4,0.4);
 	float k_a = .5;
 	vec3 out_ambient_3 = k_a * ambient;
@@ -36,6 +45,10 @@ void main() {
 	vec3 out_spec_3 = k_s * u_light_intensity / (length(l) * length(l)) * pow(max(0.0, dot(v_norm_3, h)), p);
 
 	color = vec4(out_ambient_3 + out_diff_3 + out_spec_3, 1) * vec4(water_color, 1);
+
+	// Toggle this on/off to highlight sediment-carrying water
+	color.rgb = mix(color.rgb, vec3(0.5,0.24,0.177), clamp(self_bds.b*650,0,0.7));
+
 	normal = v_normal;
 }
 
