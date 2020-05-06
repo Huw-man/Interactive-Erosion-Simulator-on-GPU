@@ -792,9 +792,9 @@ void gui_window() {
 	ImGui::InputFloat("rain_intensity", &rain_intensity, step, step_fast, format, power);
 	ImGui::InputFloat("delta_t", &delta_t, step, step_fast, format, power);
 	ImGui::InputFloat("K_c:sediment capacity", &K_c, step, step_fast, format, power);
-	ImGui::InputFloat("K_s:Dissolving constant ", &K_s, step, step_fast, format, power);
-	ImGui::InputFloat("K_d:Deposition constant ", &K_d, step, step_fast, format, power);
-	ImGui::InputFloat("K_e:Evaporation Constant", &K_e, step, step_fast, format, power);
+	ImGui::InputFloat("K_s:dissolving constant ", &K_s, step, step_fast, format, power);
+	ImGui::InputFloat("K_d:deposition constant ", &K_d, step, step_fast, format, power);
+	ImGui::InputFloat("K_e:evaporation constant", &K_e, step, step_fast, format, power);
 
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();

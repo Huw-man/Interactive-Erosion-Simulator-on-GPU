@@ -13,7 +13,7 @@ using namespace glm;
 // Initial position : on +Z
 glm::vec3 position(0, 10, 0); 
 // Initial horizontal angle 
-float horizontalAngle = 0.0f;
+float horizontalAngle = 3.14f / 4.0f;
 // Initial vertical angle 
 float verticalAngle = -3.14f / 4.0f;
 // Initial Field of View
