@@ -22,8 +22,8 @@ float find_sin_alpha() {
 	float d_b = texture(T1_bds, UV + vec2(0, 1.0 / texture_size.y)).x;
 	float u_b = texture(T1_bds, UV - vec2(0, 1.0 / texture_size.y)).x;
 
-	float dbdx = (r_b-l_b) / (2.0/texture_size.x);
-	float dbdy = (r_b-l_b) / (2.0/texture_size.y);
+	float dbdx = (r_b-l_b) / (2.0*l_xy.x/texture_size.x);
+	float dbdy = (r_b-l_b) / (2.0*l_xy.y/texture_size.y);
 
 	return sqrt(dbdx*dbdx+dbdy*dbdy)/sqrt(1+dbdx*dbdx+dbdy*dbdy);
 }

@@ -470,10 +470,10 @@ glm::vec2 bucket_position(0.5,0.5);
 int timestep = 0;
 float rain_intensity = 0.005;
 float delta_t = 0.0005;
-float K_c = 0.0002, K_s = 0.0002, K_d = 0.0002;
+float K_c = 0.0001, K_s = 0.0001, K_d = 0.0003;
 float K_e = 0.01;
-float A = 1.0, l = 0.1, g = 9.81;
-glm::vec2 l_xy(1.0,1.0);
+float A = 0.3, l = 0.3, g = 9.81;
+glm::vec2 l_xy(0.3,0.3);
 
 int run_sim = 1; // 0 = restart sim, 1 = run sim, 2 = exit completely
 
