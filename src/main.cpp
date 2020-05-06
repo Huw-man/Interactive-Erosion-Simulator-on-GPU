@@ -463,9 +463,9 @@ void render_visualization(
 
 // simulation constants, editable from gui
 int timestep = 0;
-float rain_intensity = 0.01;
-float delta_t = 0.001;
-float K_c = 0.0004, K_s = 0.0004, K_d = 0.0004;
+float rain_intensity = 0.1;
+float delta_t = 0.0001;
+float K_c = 0.0001, K_s = 0.0001, K_d = 0.0001;
 float K_e = .3;
 float A = 10.0, l = 1.0, g = 9.81;
 glm::vec2 l_xy(1.0,1.0);

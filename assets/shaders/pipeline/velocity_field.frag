@@ -34,10 +34,10 @@ void main() {
 	float d_bar = texture(T1_bds, UV).w;
 
 	float delta_W_x = (f_from_left.y - f_out.x + f_out.y - f_from_right.x) / 2;
-	color.x = delta_W_x / l_xy.y / (d_bar + 0.000000000001);
+	color.x = delta_W_x / l_xy.y / (d_bar);
 
 	float delta_W_y = (f_from_top.w - f_out.z + f_out.w - f_from_bot.z) / 2;
-	color.y = delta_W_y / l_xy.x / (d_bar + 0.000000000001);
+	color.y = delta_W_y / l_xy.x / (d_bar);
 
 	color.zw = texture(T3_v, UV).zw; // passthrough
 }

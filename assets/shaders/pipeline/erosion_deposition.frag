@@ -16,23 +16,27 @@ uniform vec2 l_xy; // l_xy.x = l_x, l_xy.y = l_y
 
 void main() {
 	vec4 self_bds = texture(T1_bds, UV);
+	if (self_bds.y > 0.001) {
+		vec2 vel = texture(T3_v, UV).xy;
 
-	vec2 vel = texture(T3_v, UV).xy;
+		vec2 db_dxy = vec2(dFdx(self_bds.x),dFdy(self_bds.x));
+		float db_dr = length(db_dxy);
+		float dl_dr = length(l_xy);
+		float sin_alpha = clamp(db_dr/dl_dr, 0.3, 1);
 
-	vec2 db_dxy = vec2(dFdx(self_bds.x),dFdy(self_bds.x));
-	float db_dr = length(db_dxy);
-	float dl_dr = length(l_xy);
-	float sin_alpha = db_dr/dl_dr;
+		float C = K.x * sin_alpha * length(vel);
 
-	float C = K.x * sin_alpha * length(vel);
-
-	if (C > self_bds.z) {
-		color.x = self_bds.x - K.y * (C - self_bds.z);
-		color.z = self_bds.z + K.y * (C - self_bds.z);
+		if (C > self_bds.z) {
+			color.x = self_bds.x - K.y * (C - self_bds.z);
+			color.z = self_bds.z + K.y * (C - self_bds.z);
+		}
+		else {
+			color.x = self_bds.x + K.z * (self_bds.z - C);
+			color.z = self_bds.z - K.z * (self_bds.z - C);
+		}
+		color.yw = self_bds.yw; // passthrough
 	}
 	else {
-		color.x = self_bds.x + K.z * (self_bds.z - C);
-		color.z = self_bds.z - K.z * (self_bds.z - C);
+		color.xyzw = self_bds.xyzw;
 	}
-	color.yw = self_bds.yw; // passthrough
 }
