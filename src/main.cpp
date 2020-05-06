@@ -18,6 +18,7 @@ GLFWwindow* window;
 // Include GLM
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 using namespace glm;
 
 #include <common/shader.hpp>
@@ -466,6 +467,8 @@ float rain_intensity = 0.01;
 float delta_t = 0.001;
 float K_c = 0.0004, K_s = 0.0004, K_d = 0.0004;
 float K_e = .3;
+float A = 10.0, l = 1.0, g = 9.81;
+glm::vec2 l_xy(1.0,1.0);
 
 // Performs a single erosion pass on the given textures, updates the references accordingly
 void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *T2_f, Framebuffer *T3_v, Framebuffer *temp) {
@@ -504,8 +507,6 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	pass_texture_uniforms(outflowFlux_shader, T1_binding, T2_binding, T3_binding);
 
 	// uniforms
-	float A = 10.0, l = 1.0, g = 9.81;
-	glm::vec2 l_xy(1.0,1.0);
 
 	glUniform3f(glGetUniformLocation(outflowFlux_shader, "alg"), A, l, g);
 	glUniform2f(glGetUniformLocation(outflowFlux_shader, "l_xy"), l_xy.x, l_xy.y);
@@ -769,6 +770,11 @@ void init_glfw_opengl() {
     getErrors();
 }
 
+/*************************************************
+ *                                               *
+ *                GUI Creation                   *
+ *                                               *
+ *************************************************/
 
 void init_gui() {
 	//Setup IMGUI
@@ -795,6 +801,10 @@ void gui_window() {
 	ImGui::InputFloat("K_s:dissolving constant ", &K_s, step, step_fast, format, power);
 	ImGui::InputFloat("K_d:deposition constant ", &K_d, step, step_fast, format, power);
 	ImGui::InputFloat("K_e:evaporation constant", &K_e, step, step_fast, format, power);
+	ImGui::InputFloat("A: cross sectional area of pipe", &A, 0.01, 1, "%.2f", power);
+	ImGui::InputFloat("l: length of pipe", &l, 0.01, 0.1, "%.2f", power);
+	ImGui::InputFloat("g: gravity", &g, 0.01, 1, "%.2f", power);
+	ImGui::InputFloat2("L_x, L_y", glm::value_ptr(l_xy), 3);
 
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
