@@ -42,15 +42,15 @@ uniform vec2 texture_size;
 void main() {
     //some arbitrary code to act as a river source, for debugging
     //to use, uncomment the block and comment out the line using noise
-    float radius = 10;
-    vec2 source_xy = vec2(0.75, 0.75) * texture_size;
-    vec2 xy = UV * texture_size;
-    if (length(source_xy - xy) <= radius) {
-        color.y = texture(T1_bds,UV).y + 1000.0*delta_t; 
-    }
-    else {
-        color.y = texture(T1_bds,UV).y;
-    }
+    // float radius = 10;
+    // vec2 source_xy = vec2(0.75, 0.75) * texture_size;
+    // vec2 xy = UV * texture_size;
+    // if (length(source_xy - xy) <= radius) {
+    //     color.y = texture(T1_bds,UV).y + 1000.0*delta_t; 
+    // }
+    // else {
+    //     color.y = texture(T1_bds,UV).y;
+    // }
 
     color.y = texture(T1_bds,UV).y + delta_t * clamp(noise(vec3(UV,float(timestep))),0.0,1.0) * rain_intensity; // add noise to old amount
 	
