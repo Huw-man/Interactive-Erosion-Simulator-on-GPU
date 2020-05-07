@@ -14,6 +14,7 @@ uniform sampler2D water_depths;
 uniform sampler2D terrain_colors;
 uniform sampler2D terrain_normals;
 uniform sampler2D terrain_depths;
+uniform sampler2D terrain_ao;
 
 uniform float zNear;
 uniform float zFar;
@@ -27,7 +28,7 @@ void main() {
     float w_depth = texture(water_depths, UV).x;
     float t_depth = texture(terrain_depths, UV).x;
     vec4 water_col = texture(water_colors, UV);
-    vec4 terrain_col = texture(terrain_colors, UV);
+    vec4 terrain_col = texture(terrain_colors, UV) * texture(terrain_ao, UV).r;
     vec4 water_norm = texture(water_normals, UV);
     vec4 terrain_norm = texture(terrain_normals, UV);
 
