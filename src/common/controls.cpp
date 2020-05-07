@@ -164,3 +164,9 @@ glm::mat4 getProjectionMatrix() {
 	return ProjectionMatrix;
 }
 
+glm::vec2 getCursorPos() {
+	double x,y;
+	glfwGetCursorPos(window,&x,&y);
+	return glm::vec2(x,y);
+}
+

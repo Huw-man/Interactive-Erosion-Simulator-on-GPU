@@ -28,6 +28,7 @@ using namespace glm;
 
 #include "plane_mesh.hpp"
 #include "image_texture.hpp"
+#include "buffers.h"
 
 // gui
 #include <imgui/imgui.h>
@@ -197,11 +198,6 @@ void bindTexture(GLenum unit, GLenum target, GLuint tex) {
  *                                               *
  *************************************************/
 
-GLuint water_source_verts, water_source_amounts;
-void render_water_sources() {
-
-}
-
 GLuint init_shader_erosion_flat;
 
 GLuint passthrough_shader;
@@ -215,12 +211,15 @@ GLuint 	rain_shader,
 		sedimentTransportation_shader,
 		evaporation_shader;
 
+StackBuffer<glm::vec2> river_sources    = StackBuffer<glm::vec2>(BufferType::ARRAY, DrawType::DYNAMIC);
+StackBuffer<glm::vec3> river_source_UVs = StackBuffer<glm::vec3>(BufferType::ARRAY, DrawType::DYNAMIC);
+GLuint source_mask;
 
 
 void init_erosion_shaders_flat() {
 	init_shader_erosion_flat = 		LoadShaders( "assets/shaders/misc/height_to_r.vert", "assets/shaders/misc/height_to_r.frag" );
 	rain_shader = 					LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/rain.frag" );
-	waterSource_shader = 			LoadShaders( "assets/shaders/pipeline/water_sources.vert", "assets/shaders/pipeline/water_sources.frag" );
+	waterSource_shader = 			LoadShaders( "assets/shaders/pipeline/sources.vert", "assets/shaders/pipeline/sources.frag" );
 	outflowFlux_shader = 			LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/outflow_flux.frag" );
 	waterSurface_shader =		    LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/water_surface.frag" );
 	velocityField_shader = 			LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/velocity_field.frag" );
@@ -270,9 +269,11 @@ void load_terrain() {
 	dirt  = new ImageTexture("assets/textures/dirt");
 	sand  = new ImageTexture("assets/textures/sand");
 	sand2 = new ImageTexture("assets/textures/snad");
+	source_mask = loadDDS("assets/textures/circle_mask.dds");
 
 	// Read our .obj file
-	bool res = loadOBJ("assets/terrain.obj", terrain_vertices, terrain_uvs, terrain_normals);
+	//bool res = loadOBJ("assets/terrain.obj", terrain_vertices, terrain_uvs, terrain_normals);
+	bool res = loadOBJ("assets/yoshi.obj", terrain_vertices, terrain_uvs, terrain_normals);
 
 	// Load it into a VBO
 	glGenBuffers(1, &terrain_vertexbuffer);
@@ -286,6 +287,53 @@ void load_terrain() {
 	glGenBuffers(1, &terrain_uvbuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, terrain_uvbuffer);
 	glBufferData(GL_ARRAY_BUFFER, terrain_uvs.size() * sizeof(glm::vec2), &terrain_uvs[0], GL_STATIC_DRAW);
+
+	river_sources.generateBuffer();
+	river_source_UVs.generateBuffer();
+}
+
+void add_source(glm::vec2 pos, float diag, float intensity) {
+	//std::cout << pos.x << " " << pos.y << std::endl;
+	glm::vec2 topleft(pos-diag);
+	glm::vec2 bottomright(pos+diag);
+	glm::vec2 topright(pos + glm::vec2(diag,-diag));
+	glm::vec2 bottomleft(pos + glm::vec2(-diag,diag));
+
+	std::vector<glm::vec2> tris = {topleft,topright,bottomright,bottomright,bottomleft,topleft};
+	river_sources.push(tris);
+	
+	glm::vec3 topleftUV(0,0,intensity);
+	glm::vec3 bottomrightUV(1,1,intensity);
+	glm::vec3 toprightUV(1,0,intensity);
+	glm::vec3 bottomleftUV(0,1,intensity);
+
+	std::vector<glm::vec3> uvs = {topleftUV,toprightUV,bottomrightUV,bottomrightUV,bottomleftUV,topleftUV};
+	river_source_UVs.push(uvs);
+
+	river_sources.generateBuffer();
+	river_source_UVs.generateBuffer();
+}
+
+
+float global_source_intensity=1.0;
+void render_sources(GLuint programID, float delta_t) {
+	glBlendFunc(GL_ONE,GL_ONE);
+	glUniform1f(glGetUniformLocation(programID,"global_source_intensity"), global_source_intensity);
+	glUniform1f(glGetUniformLocation(programID,"delta_t"), delta_t);
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+
+	river_sources.bindBuffer();
+	glVertexAttribPointer(0,2,GL_FLOAT,false,0,0);
+
+	river_source_UVs.bindBuffer();
+	glVertexAttribPointer(1,3,GL_FLOAT,false,0,0);
+
+	glDrawArrays(GL_TRIANGLES, 0, river_sources.size);
+
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(0);
 }
 
 void render_terrain(GLuint programID, std::function<void()> render_mesh) {
@@ -509,14 +557,21 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 
 	glUniform2f(glGetUniformLocation(rain_shader, "bucket_position"), bucket_position.x, bucket_position.y);
 	glUniform1f(glGetUniformLocation(rain_shader, "drop_bucket"), 1.0f);
-	getErrors();
 
 	render_screen();
-	getErrors();
 	std::swap(*T1_bds, *temp);
 	std::swap(T1_binding, temp_binding);
 
-	// render_water_sources();
+
+
+	glBlendFunc(GL_ONE, GL_ONE);
+	bindFramebuffer(T1_bds);
+	glUseProgram(waterSource_shader);
+	bindTexture(GL_TEXTURE4, GL_TEXTURE_2D, source_mask);
+	glUniform1i(glGetUniformLocation(waterSource_shader, "mask"), 4);
+	render_sources(waterSource_shader, delta_t);
+	glBlendFunc(GL_ONE, GL_ZERO);
+
 
 	bindFramebuffer(temp);
 	glUseProgram(outflowFlux_shader);
@@ -597,6 +652,23 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	
 }
 
+int source_placement_delay = 20;
+void handleSourcePlacements() {
+	if(!top_view_toggle) {
+		source_placement_delay = 20;
+		return;
+	}
+
+	source_placement_delay -= 1;
+	if(source_placement_delay > 0) return;
+
+	// TODO: only do this on click
+	glm::vec2 mPos = getCursorPos() / glm::vec2(screen_size);
+	add_source(mPos,0.05,0.03);
+
+	source_placement_delay = 20;
+}
+
 void erosion_loop_flat() {
 	run_sim = 1;
 	init_erosion_shaders_flat();
@@ -644,6 +716,7 @@ void erosion_loop_flat() {
 
     // Then, execute render loop:
     do {
+		handleSourcePlacements();
 		computeMatricesFromInputs();
 		render_visualization(screen_size, field_size, &T1_bds, &T2_f, &T3_v, &water_prepass_fbo, &terrain_prepass_fbo);
 		

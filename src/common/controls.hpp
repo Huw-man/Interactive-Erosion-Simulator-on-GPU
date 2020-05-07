@@ -11,5 +11,6 @@ float getCameraNear();
 float getCameraFar();
 glm::vec3 getCameraPos();
 void top_view();
+glm::vec2 getCursorPos();
 
 #endif
