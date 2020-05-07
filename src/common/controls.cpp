@@ -18,6 +18,7 @@ using namespace glm;
 
 // Initial position : on +Z
 glm::vec3 position(0, 10, 0); 
+glm::vec3 direction(0);
 // Initial horizontal angle 
 float horizontalAngle = 3.14f / 4.0f;
 // Initial vertical angle 
@@ -80,7 +81,7 @@ void computeMatricesFromInputs(){
 	}
 
 	// Direction : Spherical coordinates to Cartesian coordinates conversion
-	glm::vec3 direction(
+	direction = vec3(
 		cos(verticalAngle) * sin(horizontalAngle), 
 		sin(verticalAngle),
 		cos(verticalAngle) * cos(horizontalAngle)
@@ -152,6 +153,8 @@ float getCameraNear() { return 0.1; }
 float getCameraFar() { return 100.0; }
 
 glm::vec3 getCameraPos() { return position; }
+
+glm::vec3 getCameraDirction() { return direction; }
 
 glm::mat4 getViewMatrix() {
 	return ViewMatrix;
