@@ -16,7 +16,7 @@ using namespace glm;
 #include <imgui/imgui_impl_opengl3.h>
 #include <imgui/imgui_internal.h>
 
-// Initial position : on +Z
+// Initial position
 glm::vec3 position(0, 10, 0); 
 glm::vec3 direction(0);
 // Initial horizontal angle 
@@ -102,11 +102,11 @@ void computeMatricesFromInputs(){
 
 	// Move forward
 	if (glfwGetKey( window, GLFW_KEY_W ) == GLFW_PRESS){
-		position += xz_direction * deltaTime * speed;
+		position += normalize(xz_direction) * deltaTime * speed;
 	}
 	// Move backward
 	if (glfwGetKey( window, GLFW_KEY_S ) == GLFW_PRESS){
-		position -= xz_direction * deltaTime * speed;
+		position -= normalize(xz_direction) * deltaTime * speed;
 	}
 	// Strafe right
 	if (glfwGetKey( window, GLFW_KEY_D ) == GLFW_PRESS){
@@ -135,7 +135,7 @@ void computeMatricesFromInputs(){
 	ViewMatrix       = glm::lookAt(
 								position,           // Camera is here
 								position+direction, // and looks here : at the same position, plus "direction"
-								up                  // Head is up (set to 0,-1,0 to look upside-down)
+								vec3(0, 1, 0)                  // Head is up (set to 0,-1,0 to look upside-down)
 						   );
 
 	// For the next frame, the "last time" will be "now"
@@ -154,7 +154,7 @@ float getCameraFar() { return 100.0; }
 
 glm::vec3 getCameraPos() { return position; }
 
-glm::vec3 getCameraDirction() { return direction; }
+glm::vec3 getCameraDirection() { return direction; }
 
 glm::mat4 getViewMatrix() {
 	return ViewMatrix;
