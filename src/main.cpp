@@ -37,7 +37,7 @@ using namespace glm;
 
 #define getErrors() handle_gl_errors( __LINE__ )
 
-glm::ivec2 screen_size(1200, 800);
+glm::ivec2 screen_size(1920, 1080);
 
 void handle_gl_errors(int LINE) {
     GLenum err;
@@ -658,6 +658,23 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	
 }
 
+int source_placement_delay = 20;
+void handleSourcePlacements() {
+	if(!top_view_toggle) {
+		source_placement_delay = 20;
+		return;
+	}
+
+	source_placement_delay -= 1;
+	if(source_placement_delay > 0) return;
+
+	glm::vec2 mPos = getCursorPos();
+	add_source(mPos,0.05,0.1);
+	std::cout << "success!" << std::endl;
+
+	source_placement_delay = 20;
+}
+
 void erosion_loop_flat() {
 	run_sim = 1;
 	init_erosion_shaders_flat();
@@ -705,6 +722,7 @@ void erosion_loop_flat() {
 
     // Then, execute render loop:
     do {
+		handleSourcePlacements();
 		computeMatricesFromInputs();
 		render_visualization(screen_size, field_size, &T1_bds, &T2_f, &T3_v, &water_prepass_fbo, &terrain_prepass_fbo);
 		
@@ -886,6 +904,9 @@ void gui_window() {
 	ImGui::InputFloat("l: length of pipe", &l, 0.01, 0.1, "%.2f", power);
 	ImGui::InputFloat("g: gravity", &g, 0.01, 1, "%.2f", power);
 	ImGui::InputFloat2("L_x, L_y", glm::value_ptr(l_xy), 3);
+	
+	ImGui::Checkbox("place_sources", &top_view_toggle);
+
 	if (ImGui::Button("restart")) {
 		run_sim = 0;
 	}
