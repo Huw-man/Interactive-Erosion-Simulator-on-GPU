@@ -17,6 +17,7 @@ uniform vec2 texture_size;
 
 layout(location=0) out vec4 color;
 layout(location=1) out vec4 normal;
+layout(location=2) out vec4 pos;
 
 void main() {
 
@@ -49,6 +50,7 @@ void main() {
 	// Toggle this on/off to highlight sediment-carrying water
 	color.rgb = mix(color.rgb, vec3(0.5,0.24,0.177), clamp(self_bds.b*650,0,0.7));
 
-	normal = v_normal;
+	normal = vec4(v_norm_3,1);
+	pos = vec4(v_position.rgb,1);
 }
 

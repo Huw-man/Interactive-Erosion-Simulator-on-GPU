@@ -244,9 +244,9 @@ std::vector<glm::vec2> terrain_uvs;
 std::vector<glm::vec3> terrain_normals;
 
 ImageTexture *dirt, *sand, *sand2;
-GLuint terrain_prepass_shader, water_prepass_shader, water_secondpass_shader, ssao_shader, env_shader;
+GLuint skybox;
 GLuint noiseTexture;
-
+GLuint terrain_prepass_shader, water_prepass_shader, water_secondpass_shader, ssao_shader, env_shader;
 void load_terrain() {
 	// Ensure we can capture the escape key being pressed below
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
@@ -274,12 +274,13 @@ void load_terrain() {
 
 	dirt  = new ImageTexture("assets/textures/dirt");
 	sand  = new ImageTexture("assets/textures/sand");
-	sand2 = new ImageTexture("assets/textures/snad");
+	sand2 = new ImageTexture("assets/textures/dwayne");
+	skybox = loadCubemap("assets/textures/sky1/sky");
 	source_mask = loadDDS("assets/textures/circle_mask.dds");
 
 	// Read our .obj file
 	//bool res = loadOBJ("assets/terrain.obj", terrain_vertices, terrain_uvs, terrain_normals);
-	bool res = loadOBJ("assets/yoshi.obj", terrain_vertices, terrain_uvs, terrain_normals);
+	bool res = loadOBJ("assets/terrain.obj", terrain_vertices, terrain_uvs, terrain_normals);
 
 	// Load it into a VBO
 	glGenBuffers(1, &terrain_vertexbuffer);
@@ -519,10 +520,10 @@ void render_visualization(
 	glUseProgram(ssao_shader);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glBlendFunc(GL_ONE, GL_ZERO);
-	bindTexture(GL_TEXTURE1, GL_TEXTURE_2D, terrain_prepass_fbo->depth_texture_ref);
+	bindTexture(GL_TEXTURE1, GL_TEXTURE_2D, terrain_prepass_fbo->texture_refs[2]);
 	bindTexture(GL_TEXTURE2, GL_TEXTURE_2D, terrain_prepass_fbo->texture_refs[1]);
 	bindTexture(GL_TEXTURE3, GL_TEXTURE_2D, noiseTexture);
-	glUniform1i(glGetUniformLocation(ssao_shader, "gDepth"),   1);
+	glUniform1i(glGetUniformLocation(ssao_shader, "gPosition"),1);
 	glUniform1i(glGetUniformLocation(ssao_shader, "gNormal"),  2);
 	glUniform1i(glGetUniformLocation(ssao_shader, "texNoise"), 3);
 	glUniform2f(glGetUniformLocation(ssao_shader, "screen_size"), screen_size.x, screen_size.y);
@@ -547,31 +548,42 @@ void render_visualization(
 	glBlendFunc(GL_ONE, GL_ZERO);
 	bindTexture(GL_TEXTURE0, GL_TEXTURE_2D, water_prepass_fbo->texture_refs[0]);
 	bindTexture(GL_TEXTURE1, GL_TEXTURE_2D, water_prepass_fbo->texture_refs[1]);
-	bindTexture(GL_TEXTURE2, GL_TEXTURE_2D, water_prepass_fbo->depth_texture_ref);
+	bindTexture(GL_TEXTURE2, GL_TEXTURE_2D, water_prepass_fbo->texture_refs[2]);
 	bindTexture(GL_TEXTURE3, GL_TEXTURE_2D, terrain_prepass_fbo->texture_refs[0]);
 	bindTexture(GL_TEXTURE4, GL_TEXTURE_2D, terrain_prepass_fbo->texture_refs[1]);
-	bindTexture(GL_TEXTURE5, GL_TEXTURE_2D, terrain_prepass_fbo->depth_texture_ref);
+	bindTexture(GL_TEXTURE5, GL_TEXTURE_2D, terrain_prepass_fbo->texture_refs[2]);
 	bindTexture(GL_TEXTURE6, GL_TEXTURE_2D, ssao_fbo->texture_refs[0]);
+
+
+	glm::mat4 V = getViewMatrix();
+	glm::mat4 ivp = glm::inverse(proj*V);
+
+
+	bindTexture(GL_TEXTURE7, GL_TEXTURE_CUBE_MAP, skybox);
 	getErrors();
 
 	glUniform1i(glGetUniformLocation(water_secondpass_shader, "water_colors"),    0);
 	glUniform1i(glGetUniformLocation(water_secondpass_shader, "water_normals"),   1);
-	glUniform1i(glGetUniformLocation(water_secondpass_shader, "water_depths"),    2);
+	glUniform1i(glGetUniformLocation(water_secondpass_shader, "water_positions"),    2);
 	glUniform1i(glGetUniformLocation(water_secondpass_shader, "terrain_colors"),  3);
 	glUniform1i(glGetUniformLocation(water_secondpass_shader, "terrain_normals"), 4);
-	glUniform1i(glGetUniformLocation(water_secondpass_shader, "terrain_depths"),  5);
+	glUniform1i(glGetUniformLocation(water_secondpass_shader, "terrain_positions"),  5);
 	glUniform1i(glGetUniformLocation(water_secondpass_shader, "terrain_ao"),      6);
+	glUniform1i(glGetUniformLocation(water_secondpass_shader, "skybox"),      7);
 	glUniform1f(glGetUniformLocation(water_secondpass_shader, "zNear"), getCameraNear());
 	glUniform1f(glGetUniformLocation(water_secondpass_shader, "zFar"),  getCameraFar() );
 
 	// So we can get ourselves back into camera space for refractions/reflections
 	glUniformMatrix4fv(glGetUniformLocation(water_secondpass_shader, "IP"), 1, GL_FALSE, &iproj[0][0]);
 
+	glUniformMatrix4fv(glGetUniformLocation(water_secondpass_shader, "IVP"), 1, GL_FALSE, &ivp[0][0]);
+
+
 	render_screen();
 }
 
 void init_ssao() {
-	std::uniform_real_distribution<float> randomFloats(0.0, 1.0); // random floats between [0.0, 1.0]
+	std::uniform_real_distribution<float> randomFloats(-1.0, 1.0); // random floats between [0.0, 1.0]
 	std::default_random_engine generator;
 	std::vector<glm::vec3> ssaoKernel;
 	for (unsigned int i = 0; i < 64; ++i)
@@ -768,9 +780,9 @@ void erosion_loop_flat() {
 	Framebuffer temp =   gen_framebuffer(field_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F);
 
 	// Has render targets for colors, normal, and depth.
-	Framebuffer water_prepass_fbo   = gen_framebuffer(screen_size, GL_LINEAR, GL_REPEAT, GL_RGBA, glm::vec4(0), 2, DEPTH_TEXTURE);
-	Framebuffer terrain_prepass_fbo = gen_framebuffer(screen_size, GL_LINEAR, GL_REPEAT, GL_RGBA, glm::vec4(0), 2, DEPTH_TEXTURE);
-	Framebuffer ssao_fbo = gen_framebuffer(screen_size, GL_LINEAR, GL_REPEAT, GL_R8, glm::vec4(0), 1, DEPTH_TEXTURE);
+	Framebuffer water_prepass_fbo   = gen_framebuffer(screen_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F, glm::vec4(0), 3, DEPTH_TEXTURE);
+	Framebuffer terrain_prepass_fbo = gen_framebuffer(screen_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F, glm::vec4(0), 3, DEPTH_TEXTURE);
+	Framebuffer ssao_fbo = gen_framebuffer(screen_size, GL_LINEAR, GL_REPEAT, GL_R32F, glm::vec4(0), 1, DEPTH_TEXTURE);
 	
     getErrors();
 
@@ -815,7 +827,7 @@ void erosion_loop_flat() {
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-		for (int i = 0; i < 8; i++)
+		for (int i = 0; i < 16; i++)
 			erosion_pass_flat(field_size, &T1_bds, &T2_f, &T3_v, &temp);
 
 		// Swap buffers

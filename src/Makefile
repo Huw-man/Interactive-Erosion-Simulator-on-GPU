@@ -1,13 +1,13 @@
 PROGRAM = erosion_sim
 IDIR =.
 CC=gcc
-CFLAGS=-I$(IDIR)
+CFLAGS=-I$(IDIR) -g
 INC= #-I imgui/
 
 ODIR=obj
 LDIR =../lib
 
-LIBS=-lglew32 -lopengl32 -lglu32 -lglfw3 -lgdi32 -lstdc++
+LIBS=-lSOIL -lglew32  -lopengl32 -lglu32 -lglfw3 -lgdi32 -lstdc++
 
 _DEPS = main.hpp common/* plane_mesh.hpp imgui/*
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))

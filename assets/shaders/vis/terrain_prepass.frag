@@ -10,6 +10,7 @@ uniform vec3 terrain_color;
 in vec4 v_position;
 in vec4 v_normal;
 in vec2 v_uv;
+in vec4 m_position;
 
 uniform sampler2D tex1;
 uniform sampler2D tex1_norms;
@@ -24,6 +25,7 @@ uniform mat4 MV;
 
 layout(location=0) out vec4 color;
 layout(location=1) out vec4 normal;
+layout(location=2) out vec4 pos;
 
 #define M_PI 3.14159265358979323846
 
@@ -52,11 +54,11 @@ float perlin(vec2 p, float dim, float time) {
 	return center * 2.0 - 1.0;
 }
 
-float perlinFractal(vec2 m) {
-	return   0.5333333 * perlin(m,1.0,0)
-				+ 0.2666667 * perlin(m,2.0,2.0)
-				+ 0.1333333 * perlin(m,4.0,6.72345)
-				+ 0.0666667 * perlin(m,8.0,3.123412341234);
+float perlinFractal(vec2 m, float sd) {
+	return   0.5333333 * perlin(m,1.0,0+sd)
+				+ 0.2666667 * perlin(m,2.0,2.0+sd)
+				+ 0.1333333 * perlin(m,4.0,6.72345+sd)
+				+ 0.0666667 * perlin(m,8.0,3.123412341234+sd);
 }
 
 void main() {
@@ -68,11 +70,16 @@ void main() {
 	vec3 ambient = vec3(1.0);
 	float k_a = .5;
 	vec3 out_ambient_3 = k_a * ambient;
+
+	float rock_weight = pow(m_position.y,3)*0.15;
+	float rock_sel = clamp(smoothstep(0.0,1.0,smoothstep(0.0,1.0,(perlinFractal(v_uv*4.0,23.1) + 1.0 / 2.0)))*rock_weight,0,1);
 	
 	vec3 tex_color  = texture(tex1, v_uv*4.0).rgb;
 	vec3 tex2_color  = texture(tex2, v_uv*8.0).rgb;
-	float sel = (perlinFractal(v_uv*8.0) + 1.0) / 2.0;
+	vec3 tex3_color = texture(tex3, v_uv*32.0).rgb;
+	float sel = (perlinFractal(v_uv*8.0,0.0) + 1.0) / 2.0;
 	tex_color = mix(tex2_color, tex_color, clamp(sel+0.5,0,1));
+	tex_color = mix(tex_color, tex3_color, rock_sel);
 
 	// Can't normal map without tbn
 	// vec3 tex_normal = (MV*vec4(texture(tex1_norms, v_uv*4.0).xyz,0)).xyz; 
@@ -95,6 +102,7 @@ void main() {
 	vec3 out_spec_3 = k_s * u_light_intensity / (length(l) * length(l)) * pow(max(0.0, dot(v_norm_3, h)), p);
 
 	color = vec4(out_ambient_3 + out_diff_3 + out_spec_3, 1) * vec4(tex_color, 1);
-	normal = v_normal;
+	normal = vec4(v_norm_3,1);
+	pos = vec4(v_position.rgb/v_position.w,1);
 }
 

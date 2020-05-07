@@ -12,6 +12,7 @@ uniform mat4 P;
 out vec4 v_position;
 out vec4 v_normal;
 out vec2 v_uv;
+out vec4 m_position;
 
 vec3 getVPos(vec2 uv) {
   vec4 bds = texture(T1_bds, uv);
@@ -29,6 +30,8 @@ void main() {
   norm = normalize(MV * norm);
 
   vec4 p_model = vec4(o, 1);
+
+  m_position = p_model;
 
   vec4 v_pos = MV * p_model;
   v_position = v_pos;
