@@ -198,11 +198,6 @@ void bindTexture(GLenum unit, GLenum target, GLuint tex) {
  *                                               *
  *************************************************/
 
-GLuint water_source_verts, water_source_amounts;
-void render_water_sources() {
-
-}
-
 GLuint init_shader_erosion_flat;
 
 GLuint passthrough_shader;
@@ -298,6 +293,7 @@ void load_terrain() {
 }
 
 void add_source(glm::vec2 pos, float diag, float intensity) {
+	//std::cout << pos.x << " " << pos.y << std::endl;
 	glm::vec2 topleft(pos-diag);
 	glm::vec2 bottomright(pos+diag);
 	glm::vec2 topright(pos + glm::vec2(diag,-diag));
@@ -314,15 +310,16 @@ void add_source(glm::vec2 pos, float diag, float intensity) {
 	std::vector<glm::vec3> uvs = {topleftUV,toprightUV,bottomrightUV,bottomrightUV,bottomleftUV,topleftUV};
 	river_source_UVs.push(uvs);
 
-	river_sources.updateBuffer();
-	river_source_UVs.updateBuffer();
+	river_sources.generateBuffer();
+	river_source_UVs.generateBuffer();
 }
 
 
 float global_source_intensity=1.0;
-void render_sources(GLuint programID) {
+void render_sources(GLuint programID, float delta_t) {
 	glBlendFunc(GL_ONE,GL_ONE);
 	glUniform1f(glGetUniformLocation(programID,"global_source_intensity"), global_source_intensity);
+	glUniform1f(glGetUniformLocation(programID,"delta_t"), delta_t);
 
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
@@ -331,7 +328,7 @@ void render_sources(GLuint programID) {
 	glVertexAttribPointer(0,2,GL_FLOAT,false,0,0);
 
 	river_source_UVs.bindBuffer();
-	glVertexAttribPointer(0,3,GL_FLOAT,false,0,0);
+	glVertexAttribPointer(1,3,GL_FLOAT,false,0,0);
 
 	glDrawArrays(GL_TRIANGLES, 0, river_sources.size);
 
@@ -568,16 +565,13 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 
 
 	glBlendFunc(GL_ONE, GL_ONE);
-	bindFramebuffer(temp);
+	bindFramebuffer(T1_bds);
 	glUseProgram(waterSource_shader);
 	bindTexture(GL_TEXTURE4, GL_TEXTURE_2D, source_mask);
 	glUniform1i(glGetUniformLocation(waterSource_shader, "mask"), 4);
-	render_sources(waterSource_shader);
-	std::swap(*T1_bds, *temp);
-	std::swap(T1_binding, temp_binding);
+	render_sources(waterSource_shader, delta_t);
 	glBlendFunc(GL_ONE, GL_ZERO);
 
-	// render_water_sources();
 
 	bindFramebuffer(temp);
 	glUseProgram(outflowFlux_shader);
@@ -668,9 +662,9 @@ void handleSourcePlacements() {
 	source_placement_delay -= 1;
 	if(source_placement_delay > 0) return;
 
-	glm::vec2 mPos = getCursorPos();
-	add_source(mPos,0.05,0.1);
-	std::cout << "success!" << std::endl;
+	// TODO: only do this on click
+	glm::vec2 mPos = getCursorPos() / glm::vec2(screen_size);
+	add_source(mPos,0.05,0.03);
 
 	source_placement_delay = 20;
 }
