@@ -272,7 +272,8 @@ void load_terrain() {
 	sand2 = new ImageTexture("assets/textures/snad");
 
 	// Read our .obj file
-	bool res = loadOBJ("assets/terrain.obj", terrain_vertices, terrain_uvs, terrain_normals);
+	//bool res = loadOBJ("assets/terrain.obj", terrain_vertices, terrain_uvs, terrain_normals);
+	bool res = loadOBJ("assets/yoshi.obj", terrain_vertices, terrain_uvs, terrain_normals);
 
 	// Load it into a VBO
 	glGenBuffers(1, &terrain_vertexbuffer);
