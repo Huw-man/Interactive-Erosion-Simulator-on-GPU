@@ -28,6 +28,7 @@ using namespace glm;
 
 #include "plane_mesh.hpp"
 #include "image_texture.hpp"
+#include "buffers.h"
 
 // gui
 #include <imgui/imgui.h>
@@ -215,12 +216,15 @@ GLuint 	rain_shader,
 		sedimentTransportation_shader,
 		evaporation_shader;
 
+StackBuffer<glm::vec2> river_sources    = StackBuffer<glm::vec2>(BufferType::ARRAY, DrawType::DYNAMIC);
+StackBuffer<glm::vec3> river_source_UVs = StackBuffer<glm::vec3>(BufferType::ARRAY, DrawType::DYNAMIC);
+GLuint source_mask;
 
 
 void init_erosion_shaders_flat() {
 	init_shader_erosion_flat = 		LoadShaders( "assets/shaders/misc/height_to_r.vert", "assets/shaders/misc/height_to_r.frag" );
 	rain_shader = 					LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/rain.frag" );
-	waterSource_shader = 			LoadShaders( "assets/shaders/pipeline/water_sources.vert", "assets/shaders/pipeline/water_sources.frag" );
+	waterSource_shader = 			LoadShaders( "assets/shaders/pipeline/sources.vert", "assets/shaders/pipeline/sources.frag" );
 	outflowFlux_shader = 			LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/outflow_flux.frag" );
 	waterSurface_shader =		    LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/water_surface.frag" );
 	velocityField_shader = 			LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/velocity_field.frag" );
@@ -270,6 +274,7 @@ void load_terrain() {
 	dirt  = new ImageTexture("assets/textures/dirt");
 	sand  = new ImageTexture("assets/textures/sand");
 	sand2 = new ImageTexture("assets/textures/snad");
+	source_mask = loadDDS("assets/textures/circle_mask.dds");
 
 	// Read our .obj file
 	//bool res = loadOBJ("assets/terrain.obj", terrain_vertices, terrain_uvs, terrain_normals);
@@ -287,6 +292,51 @@ void load_terrain() {
 	glGenBuffers(1, &terrain_uvbuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, terrain_uvbuffer);
 	glBufferData(GL_ARRAY_BUFFER, terrain_uvs.size() * sizeof(glm::vec2), &terrain_uvs[0], GL_STATIC_DRAW);
+
+	river_sources.generateBuffer();
+	river_source_UVs.generateBuffer();
+}
+
+void add_source(glm::vec2 pos, float diag, float intensity) {
+	glm::vec2 topleft(pos-diag);
+	glm::vec2 bottomright(pos+diag);
+	glm::vec2 topright(pos + glm::vec2(diag,-diag));
+	glm::vec2 bottomleft(pos + glm::vec2(-diag,diag));
+
+	std::vector<glm::vec2> tris = {topleft,topright,bottomright,bottomright,bottomleft,topleft};
+	river_sources.push(tris);
+	
+	glm::vec3 topleftUV(0,0,intensity);
+	glm::vec3 bottomrightUV(1,1,intensity);
+	glm::vec3 toprightUV(1,0,intensity);
+	glm::vec3 bottomleftUV(0,1,intensity);
+
+	std::vector<glm::vec3> uvs = {topleftUV,toprightUV,bottomrightUV,bottomrightUV,bottomleftUV,topleftUV};
+	river_source_UVs.push(uvs);
+
+	river_sources.updateBuffer();
+	river_source_UVs.updateBuffer();
+}
+
+
+float global_source_intensity=1.0;
+void render_sources(GLuint programID) {
+	glBlendFunc(GL_ONE,GL_ONE);
+	glUniform1f(glGetUniformLocation(programID,"global_source_intensity"), global_source_intensity);
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+
+	river_sources.bindBuffer();
+	glVertexAttribPointer(0,2,GL_FLOAT,false,0,0);
+
+	river_source_UVs.bindBuffer();
+	glVertexAttribPointer(0,3,GL_FLOAT,false,0,0);
+
+	glDrawArrays(GL_TRIANGLES, 0, river_sources.size);
+
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(0);
 }
 
 void render_terrain(GLuint programID, std::function<void()> render_mesh) {
@@ -476,6 +526,8 @@ float K_e = 0.01;
 float A = 0.3, l = 0.3, g = 9.81;
 glm::vec2 l_xy(0.3,0.3);
 
+int run_sim = 1; // 0 = restart sim, 1 = run sim, 2 = exit completely
+
 // Performs a single erosion pass on the given textures, updates the references accordingly
 void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *T2_f, Framebuffer *T3_v, Framebuffer *temp) {
 
@@ -508,12 +560,22 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 
 	glUniform2f(glGetUniformLocation(rain_shader, "bucket_position"), bucket_position.x, bucket_position.y);
 	glUniform1f(glGetUniformLocation(rain_shader, "drop_bucket"), 1.0f);
-	getErrors();
 
 	render_screen();
-	getErrors();
 	std::swap(*T1_bds, *temp);
 	std::swap(T1_binding, temp_binding);
+
+
+
+	glBlendFunc(GL_ONE, GL_ONE);
+	bindFramebuffer(temp);
+	glUseProgram(waterSource_shader);
+	bindTexture(GL_TEXTURE4, GL_TEXTURE_2D, source_mask);
+	glUniform1i(glGetUniformLocation(waterSource_shader, "mask"), 4);
+	render_sources(waterSource_shader);
+	std::swap(*T1_bds, *temp);
+	std::swap(T1_binding, temp_binding);
+	glBlendFunc(GL_ONE, GL_ZERO);
 
 	// render_water_sources();
 
@@ -597,6 +659,7 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 }
 
 void erosion_loop_flat() {
+	run_sim = 1;
 	init_erosion_shaders_flat();
 	load_terrain();
 
@@ -637,6 +700,7 @@ void erosion_loop_flat() {
 	std::swap(T1_bds, temp);
     
 	init_gui();
+	init_controls();
 	getErrors();
 
     // Then, execute render loop:
@@ -659,16 +723,13 @@ void erosion_loop_flat() {
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 		getErrors();
-    } while( glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
-		   glfwWindowShouldClose(window) == 0 );
 
-	// Cleanup
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
+		if (glfwGetKey(window, GLFW_KEY_ESCAPE ) == GLFW_PRESS) {
+			run_sim = 2;
+		}
+    } while(run_sim == 1);
 
-	glfwDestroyWindow(window);
-    glfwTerminate();
+	
 }
 
 
@@ -705,7 +766,6 @@ void conway() {
     
     // Then, execute render loop:
     do {
-
         bindFramebuffer(0);
 		// Clear the screen
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -826,6 +886,9 @@ void gui_window() {
 	ImGui::InputFloat("l: length of pipe", &l, 0.01, 0.1, "%.2f", power);
 	ImGui::InputFloat("g: gravity", &g, 0.01, 1, "%.2f", power);
 	ImGui::InputFloat2("L_x, L_y", glm::value_ptr(l_xy), 3);
+	if (ImGui::Button("restart")) {
+		run_sim = 0;
+	}
 
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
@@ -833,9 +896,17 @@ void gui_window() {
 
 int main( void )
 {
-	init_glfw_opengl();
-	// load_terrain();
-	erosion_loop_flat();
+	while(run_sim != 2) {
+		init_glfw_opengl();
+		erosion_loop_flat();
+		// Cleanup
+		ImGui_ImplOpenGL3_Shutdown();
+		ImGui_ImplGlfw_Shutdown();
+		ImGui::DestroyContext();
+
+		glfwDestroyWindow(window);
+		glfwTerminate();
+	}
     // conway();
     return 0;
 }

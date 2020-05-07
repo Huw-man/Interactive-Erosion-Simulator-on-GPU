@@ -60,6 +60,7 @@ class Controls {
         void computeMatricesFromInputs();
 }; */
 
+void init_controls();
 void computeMatricesFromInputs();
 glm::mat4 getViewMatrix();
 glm::mat4 getProjectionMatrix();
