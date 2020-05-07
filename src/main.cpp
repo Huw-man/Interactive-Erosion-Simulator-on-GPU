@@ -20,6 +20,7 @@ GLFWwindow* window;
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "glm/ext.hpp"
 using namespace glm;
 
 #include <common/shader.hpp>
@@ -212,7 +213,8 @@ GLuint 	rain_shader,
 		sedimentTransportation_shader,
 		evaporation_shader;
 
-StackBuffer<glm::vec2> river_sources    = StackBuffer<glm::vec2>(BufferType::ARRAY, DrawType::DYNAMIC);
+// initialized in load_terrain()
+StackBuffer<glm::vec2> river_sources = StackBuffer<glm::vec2>(BufferType::ARRAY, DrawType::DYNAMIC);
 StackBuffer<glm::vec3> river_source_UVs = StackBuffer<glm::vec3>(BufferType::ARRAY, DrawType::DYNAMIC);
 GLuint source_mask;
 
@@ -316,6 +318,36 @@ void add_source(glm::vec2 pos, float diag, float intensity) {
 
 	river_sources.generateBuffer();
 	river_source_UVs.generateBuffer();
+}
+
+// used as the callback for mouse button
+void handleSourcePlacements_callback(GLFWwindow* window, int button, int action, int mods) {
+	if (top_view_toggle && button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+		// place source on click
+		vec2 cp = getCursorPos();
+		vec4 mouse_clip(
+			cp.x * 2 / screen_size.x  - 1, 
+			1 - cp.y * 2 / screen_size.y, 
+			1, 
+			1
+		);
+		vec4 mouse_worldspace = glm::inverse(getProjectionMatrix() * getViewMatrix()) * mouse_clip;
+
+		glm::vec3 o = getCameraPos();
+		glm::vec3 d = normalize(mouse_worldspace - vec4(o, 1));
+		float t = - o.y / d.y;
+
+		vec3 i = o + t*d;
+
+		// glm::vec2 mPos = getCursorPos() / glm::vec2(screen_size);
+		glm::vec2 mPos = vec2(i.x, i.z);
+		// std::cout<<cp.x << "," << cp.y <<std::endl;
+		// std::cout<<o.x << "," << o.y << ", " << o.z <<std::endl;
+		// std::cout<<mouse_worldspace.x << "," << mouse_worldspace.y << ", " << mouse_worldspace.z <<std::endl;
+		// std::cout << t << std::endl;
+		// std::cout<<i.x << "," << i.y << ", " << i.z <<std::endl;
+		add_source(mPos,0.03,0.03);
+	}
 }
 
 
@@ -721,23 +753,6 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	
 }
 
-int source_placement_delay = 20;
-void handleSourcePlacements() {
-	if(!top_view_toggle) {
-		source_placement_delay = 20;
-		return;
-	}
-
-	source_placement_delay -= 1;
-	if(source_placement_delay > 0) return;
-
-	// TODO: only do this on click
-	glm::vec2 mPos = getCursorPos() / glm::vec2(screen_size);
-	add_source(mPos,0.05,0.03);
-
-	source_placement_delay = 20;
-}
-
 void erosion_loop_flat() {
 	run_sim = 1;
 	init_erosion_shaders_flat();
@@ -783,11 +798,12 @@ void erosion_loop_flat() {
     
 	init_gui();
 	init_controls();
+
+	glfwSetMouseButtonCallback(window, handleSourcePlacements_callback);
 	getErrors();
 
     // Then, execute render loop:
     do {
-		handleSourcePlacements();
 		computeMatricesFromInputs();
 		render_visualization(screen_size, field_size, &T1_bds, &T2_f, &T3_v, &water_prepass_fbo, &terrain_prepass_fbo, &ssao_fbo);
 		
@@ -953,7 +969,7 @@ void init_gui() {
 void gui_window() {
 	ImGui::Begin("Controls");
 
-	ImGui::Text("w, a, s, d to move\nSpace: fly up, L_Shift: fly down\ne to toggle camera pan");
+	ImGui::Text("w, a, s, d to move\nSpace: fly up, L_Shift: fly down\ne to toggle camera pan\nESC to quit");
 
 	float step = 1.0e-5f;
 	float step_fast = 0.1f;
@@ -985,6 +1001,10 @@ int main( void )
 	while(run_sim != 2) {
 		init_glfw_opengl();
 		erosion_loop_flat();
+
+		// TODO: clear all buffers
+		river_sources = StackBuffer<glm::vec2>(BufferType::ARRAY, DrawType::DYNAMIC);
+		river_source_UVs = StackBuffer<glm::vec3>(BufferType::ARRAY, DrawType::DYNAMIC);
 		// Cleanup
 		ImGui_ImplOpenGL3_Shutdown();
 		ImGui_ImplGlfw_Shutdown();

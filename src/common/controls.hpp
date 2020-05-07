@@ -10,6 +10,7 @@ glm::mat4 getProjectionMatrix();
 float getCameraNear();
 float getCameraFar();
 glm::vec3 getCameraPos();
+glm::vec3 getCameraDirection();
 void top_view();
 glm::vec2 getCursorPos();
 
