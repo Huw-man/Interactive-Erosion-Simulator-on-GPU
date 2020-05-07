@@ -347,7 +347,7 @@ void handleSourcePlacements_callback(GLFWwindow* window, int button, int action,
 		// std::cout<<mouse_worldspace.x << "," << mouse_worldspace.y << ", " << mouse_worldspace.z <<std::endl;
 		// std::cout << t << std::endl;
 		// std::cout<<i.x << "," << i.y << ", " << i.z <<std::endl;
-		add_source(mPos,0.03,0.03);
+		add_source(mPos,0.03,0.02);
 	}
 }
 
@@ -631,10 +631,10 @@ glm::vec2 bucket_position(0.5,0.5);
 int timestep = 0;
 float rain_intensity = 0.005;
 float delta_t = 0.0005;
-float K_c = 0.0001, K_s = 0.0001, K_d = 0.0003;
-float K_e = 0.01;
-float A = 0.3, l = 0.3, g = 9.81;
-glm::vec2 l_xy(0.3,0.3);
+float K_c = 0.0001, K_s = 0.0001, K_d = 0.0001;
+float K_e = 0.15;
+float A = 2.0, l = 0.1, g = 9.81;
+glm::vec2 l_xy(1.0,1.0);
 
 int run_sim = 1; // 0 = restart sim, 1 = run sim, 2 = exit completely
 
