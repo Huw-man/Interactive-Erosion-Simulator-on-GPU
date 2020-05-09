@@ -5,7 +5,9 @@
 #include <GL/glew.h>
 
 #include <GLFW/glfw3.h>
-
+#include "texture.hpp"
+#include <iostream>
+#include <SOIL.h>
 
 GLuint loadBMP_custom(const char * imagepath){
 
@@ -124,7 +126,7 @@ GLuint loadBMP_custom(const char * imagepath){
 #define FOURCC_DXT3 0x33545844 // Equivalent to "DXT3" in ASCII
 #define FOURCC_DXT5 0x35545844 // Equivalent to "DXT5" in ASCII
 
-GLuint loadDDS(const char * imagepath){
+GLuint loadDDS(const char * imagepath) {
 
 	unsigned char header[124];
 
@@ -214,5 +216,22 @@ GLuint loadDDS(const char * imagepath){
 
 	return textureID;
 
+
+}
+
+using namespace std;
+GLuint loadCubemap(std::string filename_base, std::string ext) {
+    return SOIL_load_OGL_cubemap
+	(
+		(filename_base+"_r"+ext).c_str(),
+		(filename_base+"_l"+ext).c_str(),
+		(filename_base+"_u"+ext).c_str(),
+		(filename_base+"_d"+ext).c_str(),
+		(filename_base+"_b"+ext).c_str(),
+		(filename_base+"_f"+ext).c_str(),
+		SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID,
+		SOIL_FLAG_MIPMAPS
+	);
 
 }
