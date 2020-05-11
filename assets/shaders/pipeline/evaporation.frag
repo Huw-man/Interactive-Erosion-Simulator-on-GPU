@@ -11,6 +11,6 @@ uniform float delta_t;
 void main(){
 	vec4 self_bds = texture(T1_bds, UV);
 
-	color.y = self_bds.y * (1 - K_e * delta_t);
+	color.y = max(self_bds.y * (1 - K_e * delta_t),0);
 	color.xzw = self_bds.xzw; // passthrough
 }

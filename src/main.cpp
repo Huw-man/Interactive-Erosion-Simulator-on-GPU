@@ -211,7 +211,8 @@ GLuint 	rain_shader,
 		velocityField_shader, 
 		erosionDeposition_shader, 
 		sedimentTransportation_shader,
-		evaporation_shader;
+		evaporation_shader,
+		smoothing_shader;
 
 // initialized in load_terrain()
 StackBuffer<glm::vec2> river_sources = StackBuffer<glm::vec2>(BufferType::ARRAY, DrawType::DYNAMIC);
@@ -229,6 +230,7 @@ void init_erosion_shaders_flat() {
 	erosionDeposition_shader = 		LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/erosion_deposition.frag" );
 	sedimentTransportation_shader = LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/sediment_transportation.frag" );
 	evaporation_shader = 			LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/evaporation.frag" );
+	smoothing_shader = 				LoadShaders( "assets/shaders/misc/blit.vert", "assets/shaders/pipeline/smooth.frag" );
 	getErrors();
 }
 
@@ -629,12 +631,13 @@ glm::vec2 bucket_position(0.5,0.5);
 
 // simulation constants, editable from gui
 int timestep = 0;
-float rain_intensity = 0.005;
+float rain_intensity = 5.0;
 float delta_t = 0.0005;
-float K_c = 0.0001, K_s = 0.0001, K_d = 0.0001;
+float K_c = 0.01, K_s = 0.01, K_d = 0.01;
 float K_e = 0.15;
-float A = 2.0, l = 0.1, g = 9.81;
+float A = 1.0, l = 1.0, g = 9.81;
 glm::vec2 l_xy(1.0,1.0);
+float max_height_difference = 0.3f;
 
 int run_sim = 1; // 0 = restart sim, 1 = run sim, 2 = exit completely
 
@@ -664,7 +667,7 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	glUniform1i(glGetUniformLocation(rain_shader, "timestep"), timestep);
 	glUniform1f(glGetUniformLocation(rain_shader, "delta_t"), delta_t);
 
-	if (timestep % 160 == 0) {
+	if (timestep % 1 == 0) {
 		bucket_position = glm::vec2(rand()/(float)RAND_MAX, rand()/(float)RAND_MAX);
 	}
 
@@ -762,6 +765,22 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	std::swap(*T1_bds, *temp);
 	std::swap(T1_binding, temp_binding);
 	getErrors();
+
+	
+
+
+	bindFramebuffer(temp);
+	glUseProgram(smoothing_shader);
+	pass_texture_uniforms(smoothing_shader, T1_binding, T2_binding, T3_binding);
+
+	// uniforms
+	glUniform2f(glGetUniformLocation(smoothing_shader, "texture_size"), field_size.x, field_size.y);
+	glUniform1f(glGetUniformLocation(smoothing_shader, "m_hdiff"), max_height_difference);
+
+	render_screen();
+	std::swap(*T1_bds, *temp);
+	std::swap(T1_binding, temp_binding);
+
 	
 }
 
@@ -774,15 +793,15 @@ void erosion_loop_flat() {
 	glm::ivec2 field_size(1024,1024);
 	terrainPlaneMesh = new PlaneMesh(field_size);
 
-	Framebuffer T1_bds = gen_framebuffer(field_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F); // GL_RGBA32F = HDR Framebuffers
-	Framebuffer T2_f =   gen_framebuffer(field_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F);
-	Framebuffer T3_v =   gen_framebuffer(field_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F);
-	Framebuffer temp =   gen_framebuffer(field_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F);
+	Framebuffer T1_bds = gen_framebuffer(field_size, GL_NEAREST, GL_CLAMP_TO_BORDER, GL_RGBA32F); // GL_RGBA32F = HDR Framebuffers
+	Framebuffer T2_f =   gen_framebuffer(field_size, GL_NEAREST, GL_CLAMP_TO_BORDER, GL_RGBA32F);
+	Framebuffer T3_v =   gen_framebuffer(field_size, GL_NEAREST, GL_CLAMP_TO_BORDER, GL_RGBA32F);
+	Framebuffer temp =   gen_framebuffer(field_size, GL_NEAREST, GL_CLAMP_TO_BORDER, GL_RGBA32F);
 
 	// Has render targets for colors, normal, and depth.
-	Framebuffer water_prepass_fbo   = gen_framebuffer(screen_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F, glm::vec4(0), 3, DEPTH_TEXTURE);
-	Framebuffer terrain_prepass_fbo = gen_framebuffer(screen_size, GL_LINEAR, GL_REPEAT, GL_RGBA32F, glm::vec4(0), 3, DEPTH_TEXTURE);
-	Framebuffer ssao_fbo = gen_framebuffer(screen_size, GL_LINEAR, GL_REPEAT, GL_R32F, glm::vec4(0), 1, DEPTH_TEXTURE);
+	Framebuffer water_prepass_fbo   = gen_framebuffer(screen_size, GL_LINEAR, GL_CLAMP_TO_BORDER, GL_RGBA32F, glm::vec4(0), 3, DEPTH_TEXTURE);
+	Framebuffer terrain_prepass_fbo = gen_framebuffer(screen_size, GL_LINEAR, GL_CLAMP_TO_BORDER, GL_RGBA32F, glm::vec4(0), 3, DEPTH_TEXTURE);
+	Framebuffer ssao_fbo = gen_framebuffer(screen_size, GL_LINEAR, GL_CLAMP_TO_BORDER, GL_R32F, glm::vec4(0), 1, NO_DEPTH_TEXTURE);
 	
     getErrors();
 

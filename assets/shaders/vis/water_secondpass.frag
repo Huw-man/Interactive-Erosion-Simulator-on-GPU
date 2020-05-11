@@ -46,8 +46,8 @@ void main() {
         terrain_col = texture(skybox, dir.xyz/dir.w);
     } 
 
-    if (ray_depth > 0.001) {
-        float alph = (1.0 - exp(-ray_depth))*0.4+0.3*clamp(ray_depth*1000.0, 0, 1);
+    if (ray_depth > 0.00001) {
+        float alph = (1.0 - exp(-ray_depth))*0.4+0.3*clamp(ray_depth*10000.0, 0, 1);
 
 
         color = mix(terrain_col, water_col, alph);

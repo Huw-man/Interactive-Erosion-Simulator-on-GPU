@@ -28,26 +28,30 @@ float find_sin_alpha() {
 	return sqrt(dbdx*dbdx+dbdy*dbdy)/sqrt(1+dbdx*dbdx+dbdy*dbdy);
 }
 
+vec4 avg(sampler2D tex) {
+	vec4 a = texture(tex, UV + texture_size*vec2(1,0));
+	vec4 b = texture(tex, UV + texture_size*vec2(-1,0));
+	vec4 c = texture(tex, UV + texture_size*vec2(0,1));
+	vec4 d = texture(tex, UV + texture_size*vec2(0,-1));
+	vec4 e = texture(tex, UV);
+	return (a+b+c+d+e)/5.0;
+}
+
 void main() {
 	vec4 self_bds = texture(T1_bds, UV);
-	if (self_bds.y > 0.0001) {
-		vec2 vel = texture(T3_v, UV).xy;
+	vec2 vel = texture(T3_v, UV).xy;
 
-		float sin_alpha = find_sin_alpha();
+	float sin_alpha = find_sin_alpha();
 
-		float C = K.x * sin_alpha * length(vel);
+	float C = K.x * sin_alpha * length(vel) * clamp(self_bds.y,0,1);
 
-		if (C > self_bds.z) {
-			color.x = self_bds.x - K.y * (C - self_bds.z);
-			color.z = self_bds.z + K.y * (C - self_bds.z);
-		}
-		else {
-			color.x = self_bds.x + K.z * (self_bds.z - C);
-			color.z = self_bds.z - K.z * (self_bds.z - C);
-		}
-		color.yw = self_bds.yw; // passthrough
+	if (C > self_bds.z) {
+		color.x = self_bds.x - K.y * (C - self_bds.z);
+		color.z = self_bds.z + K.y * (C - self_bds.z);
 	}
 	else {
-		color.xyzw = self_bds.xyzw;
+		color.x = self_bds.x + K.z * (self_bds.z - C);
+		color.z = self_bds.z - K.z * (self_bds.z - C);
 	}
+	color.yw = self_bds.yw; // passthrough
 }

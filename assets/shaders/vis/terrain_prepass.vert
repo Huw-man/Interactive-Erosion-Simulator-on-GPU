@@ -16,7 +16,7 @@ out vec4 m_position;
 
 vec3 getVPos(vec2 uv) {
   vec4 bds = texture(T1_bds, uv);
-  return vec3(uv.x, bds.x, uv.y);
+  return vec3(uv.x, bds.x / 100.0, uv.y);
 }
 
 void main() {

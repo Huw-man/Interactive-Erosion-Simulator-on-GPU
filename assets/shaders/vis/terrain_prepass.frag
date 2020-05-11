@@ -63,7 +63,7 @@ float perlinFractal(vec2 m, float sd) {
 
 void main() {
 
-	if (v_uv.x < 1.0/texture_size.x || v_uv.x > 1.0-1.0/texture_size.x || v_uv.y < 1.0/texture_size.y || v_uv.y > 1.0-1.0/texture_size.y) {
+	if (v_uv.x < 4.0/texture_size.x || v_uv.x > 1.0-4.0/texture_size.x || v_uv.y < 4.0/texture_size.y || v_uv.y > 1.0-4.0/texture_size.y) {
 		discard;
 	}
 

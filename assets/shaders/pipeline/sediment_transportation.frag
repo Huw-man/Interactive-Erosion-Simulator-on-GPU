@@ -15,7 +15,7 @@ void main(){
 	vec4 self_bds = texture(T1_bds, UV);
 	vec2 vel = texture(T3_v, UV).xy;
 	//scale up to xy coords so we can apply the vel*delta_t step
-	vec2 XY = vec2(UV.x * texture_size.x, UV.y * texture_size.y);
+	vec2 XY = UV * texture_size;
 	float x_step = clamp(XY.x - vel.x * delta_t, 0, texture_size.x);
 	float y_step = clamp(XY.y - vel.y * delta_t, 0, texture_size.y);
 

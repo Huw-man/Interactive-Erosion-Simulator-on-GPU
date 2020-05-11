@@ -47,7 +47,7 @@ void main() {
     //to use, uncomment the block and comment out the line using noise
     float radius = 0.01;
     vec2 xy = UV;
-    float frc = 0.0001;
+    float frc = 0.001;
     if (length(bucket_position - xy) <= radius) {
         frc = 300.0; 
     }
