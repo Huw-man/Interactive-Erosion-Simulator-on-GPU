@@ -11,62 +11,168 @@
             font-family: 'Open Sans', sans-serif;
             color: #121212;
         }
+
         h1, h2, h3, h4 {
             font-family: 'Source Sans Pro', sans-serif;
         }
+        p {
+            line-height: 180%;
+        }
+
+        .aligncenter {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            /*width: 100%;*/
+        }
+
+        code {
+            display: block;
+            white-space: pre-wrap
+        }
+
+        div.padded {
+            padding-top: 0px;
+            padding-right: 100px;
+            padding-bottom: 0.25in;
+            padding-left: 100px;
+        }
+        .navbar {
+            overflow: auto;
+            background-color: #333;
+            position: fixed; /* Set the navbar to fixed position */
+            top: 0; /* Position the navbar at the top of the page */
+            width: 50%; /* Full width */
+        }
+
+        /* Links inside the navbar */
+        .navbar a {
+            float: left;
+            display: block;
+            color: #f2f2f2;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+        }
+
+        /* Change background on mouse-over */
+        .navbar a:hover {
+            background: #ddd;
+            color: black;
+        }
+
+        /* Main content */
+        .section {
+            padding-top: 50px /* Add a top margin to avoid content overlay */
+        }
     </style>
+    <script type="text/javascript" src="latexit.js"></script>
+    <script type="text/javascript">
+        LatexIT.add('pre', true);
+    </script>
+
     <title>CS 184 Final Project</title>
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
     <link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
 </head>
 
 <body>
+<br/>
+<div class="navbar">
+    <a href="#final">Final</a>
+    <a href="#milestone">Milestone</a>
+    <a href="#proposal">Proposal</a>
+</div>
 
-<h1 align="middle">Interactive Erosion Simulator</h1>
-<h2 align="middle">Creating an application to model erosion of different materials over time via various erosive agents.</h2>
-<h3 align="middle">Newman Hu, Dylan Mcleod, Hanlin Chen</h3>
+<h1 align="middle" class="section" id="final">Interactive Erosion Simulator</h1>
+<h3 align="middle">Dylan Mcleod, Hanlin Chen, Newman Hu</h3>
+
+<div>
+    <h2>Abstract</h2>
+    <h2>Technical Approach</h2>
+    <h2>Results</h2>
+    <h2>References</h2>
+    <h2>Acknowledgements</h2>
+</div>
+
+
+
+<div class="section" id="milestone">
+    <h2 align="middle"> Milestone updates</h2>
+    <h3> Status report</h3>
+    <p>
+        We found two very helpful papers on the subject of simulating erosion [1] and [2].
+        Both of these papers can be implemented using fragment shaders on textures which represent heightmaps/terrain characteristics/etc. So, to start off, we started by setting up a simple simulation using fragment shaders, namely conway’s game of life. Since Conway’s game of life uses the information of textures in a small region to determine the next pixel of that texture, we figured it would be a good test of our fragment shader simulation code.
+    </p>
+    <p>
+        To simulate things using OpenGL fragment shaders, we use two OpenGL framebuffers (textures which can be rendered to), one representing the current frame and one representing the next. We run the simulation shader with the input texture being the current frame to determine the next frame, then we swap the framebuffers so that the next frame becomes the current. If we end up needing numerical derivatives (storing more than one timestep), we can just modify this to use more framebuffers, or more buffering.
+    </p>
+    <p>
+        Our erosion model will be based on a 2-D grid with virtual pipes dictating the flow between cells. Each cell contains information for the following: terrain height, water height, suspended sediment amount, the outflow flux components (left, right, top, bottom), and velocity vector. Then, the simulation will run the following updates: 1. Water increases due to rainfall or river sources. 2. Flow is simulated with the shallow-water model. Then the velocity field and the water surface are updated. 3. Erosion-deposition process is computed with the velocity field. 4. Suspended sediment is transported by the velocity field. 5. Water decreases due to evaporation. The equations for the updates are a bit complex so we won’t include them here. Because the model is designed such that everything lies on a 2-D grid, it is easy to store the various pieces of information into appropriate textures that can then be passed into the shader.
+    </p>
+    <p>
+        We haven’t really followed our initial plan, as the way we wanted to implement the simulation wouldn’t have worked well. Simulating all the water and terrain/sediment as particles would have been too complicated, so instead, we are now following the model that we found in the two papers referenced above. They simplify the simulation to height maps for water/terrain heights, and use shallow water equations to model the behavior of the water, rather than a fully 3-D implementation. So, because passing textures to shaders was an essential step and the math modeling the water/terrain updates is quite complex, we decided to first approach the pipeline of passing textures to the shader and having the shader make updates (we used Conway’s game of life as a simple example).
+    </p>
+    <p>
+        Now that we have our program set up to pass in textures to the shader, we need to create input textures corresponding to starting terrains, and implement the update steps for our simulation.
+    </p>
+    <p>
+        [1] <a href="http://www-ljk.imag.fr/Publications/Basilic/com.lmc.publi.PUBLI_Inproceedings@117681e94b6_fff75c/FastErosion_PG07.pdf?fbclid=IwAR1WL_szxrtu9HVPgPCGsikwzSDqrJ35WLiubNPfLg7bMGj_WjF7L1q-DOUhttp://www-ljk.imag.fr/Publications/Basilic/com.lmc.publi.PUBLI_Inproceedings@117681e94b6_fff75c/FastErosion_PG07.pdf?fbclid=IwAR1WL_szxrtu9HVPgPCGsikwzSDqrJ35WLiubNPfLg7bMGj_WjF7L1q-DOU">Fast Hydraulic Erosion Simulation and Visualization on GPU </a>
+    </p>
+    <p>
+        [2] <a
+            href="https://cgg.mff.cuni.cz/~jaroslav/papers/2008-sca-erosim/2008-sca-erosiom-fin.pdf?fbclid=IwAR1aqIXnx86Vtdk2QhRv0jPhobn6RQBHnBN9n6y_3fsaBhABmi9XMZigEcc"> Interactive Terrain Modeling Using Hydraulic Erosion</a>
+    </p>
+
+    <h3><a href="https://drive.google.com/a/berkeley.edu/file/d/1Locv_8YUhZblhTzh4C4ADB3dYgvyVpUn/view?usp=sharing">Video</a></h3>
+    <h3><a href="https://docs.google.com/presentation/d/1IEN7PMjY9hBt5Wh1ZWKPFD8nfBjt2zMddlerJnfRGME/edit?pli=1#slide=id.p">Presentation Slides</a></h3>
+</div>
+
 
 
 <a href="milestone.html">view the milestone webpage</a>
+<div class="section" id="proposal">
+    <h2 align="middle">Proposal</h2>
+    <h3 align="middle">Creating an application to model erosion of different materials over time via various erosive agents.</h3>
+    <h3> Problem Description</h3>
+    <p>
+        We are interested in simulating erosion for the procedural generation of natural looking terrain. This application will be able to simulate natural erosion processes that are unobservable in real time scales. We plan on addressing the effects of water and wind on loosely packed material like soil and sand.
+    </p>
+    <br><br>
 
-<h3> Problem Description</h3>
-<p>
-    We are interested in simulating erosion for the procedural generation of natural looking terrain. This application will be able to simulate natural erosion processes that are unobservable in real time scales. We plan on addressing the effects of water and wind on loosely packed material like soil and sand.
-</p>
-<br><br>
+    <h3> Goals and Deliverable </h3>
+    <p>
+        We plan to implement at least one erosive agent and one eroding material most likely wind and sand. With this application we plan to have basic interaction where the user is able to direct the erosive agent to affect the sand. We plan on implementing this with a platform independent online demo.
+    </p>
 
-<h3> Goals and Deliverable </h3>
-<p>
-    We plan to implement at least one erosive agent and one eroding material most likely wind and sand. With this application we plan to have basic interaction where the user is able to direct the erosive agent to affect the sand. We plan on implementing this with a platform independent online demo.
-</p>
-
-<p>
-    We hope to create an application that allows you to adjust time scales, as well as choose both the material being eroded and the erosive agent. We would like for it to be fully interactive, with the user having full control of all these parameters when simulating. Ideally, the user will be able to design their starting scene, pick parameters, and run the simulation for a certain amount of time. A successful implementation will ideally run online and allow users to interact with the application independent of their platform. A feature we hope to also implement is real-time rendering on the GPU.
-</p>
+    <p>
+        We hope to create an application that allows you to adjust time scales, as well as choose both the material being eroded and the erosive agent. We would like for it to be fully interactive, with the user having full control of all these parameters when simulating. Ideally, the user will be able to design their starting scene, pick parameters, and run the simulation for a certain amount of time. A successful implementation will ideally run online and allow users to interact with the application independent of their platform. A feature we hope to also implement is real-time rendering on the GPU.
+    </p>
 
 
 
-<h3> Schedule </h3>
-<p>
-    Week 1: Basic fluid simulation <br>
-    &emsp; i: implement platform <br>
-    Week 2: Implement erosion interactions <br>
-    &emsp; i: Sand as small particles <br>
-    Week 3: Create interactive application<br>
-    &emsp; i: enable user specification of erosive agent <br>
-    Week 4:  Extras: more materials, more erosive agents, real-time GPU simulation<br>
-</p>
+    <h3> Schedule </h3>
+    <p>
+        Week 1: Basic fluid simulation <br>
+        &emsp; i: implement platform <br>
+        Week 2: Implement erosion interactions <br>
+        &emsp; i: Sand as small particles <br>
+        Week 3: Create interactive application<br>
+        &emsp; i: enable user specification of erosive agent <br>
+        Week 4:  Extras: more materials, more erosive agents, real-time GPU simulation<br>
+    </p>
 
-<h3>Resources </h3>Link this video on your webpage.Link this video on your webpage.
-<p>
-    Computing platform: Windows
-    Hardware resources: GPU
-    Software resources: OpenGL, three.js
-    Position Based Fluids: http://mmacklin.com/pbf_sig_preprint.pdf <br>
-    Hybrid Fluid Simulation, APIC: https://www.math.ucla.edu/~jteran/papers/JSSTS15.pdf <br>
-    Adaptive Tearing and Cracking of Thin Sheets: http://graphics.berkeley.edu/papers/Pfaff-ATC-2014-07/Pfaff-ATC-2014-07.pdf
-    Folding and Crumpling Adaptive Sheets: http://graphics.berkeley.edu/papers/Narain-FCA-2013-07/Narain-FCA-2013-07.pdf
+    <h3>Resources </h3>Link this video on your webpage.Link this video on your webpage.
+    <p>
+        Computing platform: Windows
+        Hardware resources: GPU
+        Software resources: OpenGL, three.js
+        Position Based Fluids: http://mmacklin.com/pbf_sig_preprint.pdf <br>
+        Hybrid Fluid Simulation, APIC: https://www.math.ucla.edu/~jteran/papers/JSSTS15.pdf <br>
+        Adaptive Tearing and Cracking of Thin Sheets: http://graphics.berkeley.edu/papers/Pfaff-ATC-2014-07/Pfaff-ATC-2014-07.pdf
+        Folding and Crumpling Adaptive Sheets: http://graphics.berkeley.edu/papers/Narain-FCA-2013-07/Narain-FCA-2013-07.pdf
 
-</p>
+    </p>
+</div>
 </body>
 </html>
