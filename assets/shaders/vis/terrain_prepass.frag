@@ -71,12 +71,12 @@ void main() {
 	float k_a = .5;
 	vec3 out_ambient_3 = k_a * ambient;
 
-	float rock_weight = pow(m_position.y,3)*0.15;
-	float rock_sel = clamp(smoothstep(0.0,1.0,smoothstep(0.0,1.0,(perlinFractal(v_uv*4.0,23.1) + 1.0 / 2.0)))*rock_weight,0,1);
+	float rock_weight = pow(m_position.y*0.3,0.3)*1.0;
+	float rock_sel = clamp(smoothstep(0.0,1.0,smoothstep(0.0,1.0,clamp((perlinFractal(v_uv*4.0,23.1) + 1.0 / 2.0),0.5,1.0)*rock_weight)),0,0.5);
 	
 	vec3 tex_color  = texture(tex1, v_uv*4.0).rgb;
 	vec3 tex2_color  = texture(tex2, v_uv*8.0).rgb;
-	vec3 tex3_color = texture(tex3, v_uv*32.0).rgb;
+	vec3 tex3_color = texture(tex3, v_uv*64.0).rgb;
 	float sel = (perlinFractal(v_uv*8.0,0.0) + 1.0) / 2.0;
 	tex_color = mix(tex2_color, tex_color, clamp(sel+0.5,0,1));
 	tex_color = mix(tex_color, tex3_color, rock_sel);
