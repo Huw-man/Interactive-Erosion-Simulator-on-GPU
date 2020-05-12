@@ -15,7 +15,7 @@ uniform vec2 screen_size;
 
 #define noiseScale1Const 4.0
 #define kernelSize 64
-uniform float radius = 0.01;
+uniform float radius = 0.05;
 uniform float bias = 0.0000;
 
 in vec2 UV;

@@ -631,18 +631,19 @@ glm::vec2 bucket_position(0.5,0.5);
 
 // simulation constants, editable from gui
 int timestep = 0;
-float rain_intensity = 5.0;
+float rain_intensity = 10.0;
 float delta_t = 0.0005;
-float K_c = 0.01, K_s = 0.01, K_d = 0.01;
-float K_e = 0.15;
-float A = 1.0, l = 1.0, g = 9.81;
+float K_c = 0.08, K_s = 0.01, K_d = 0.01;
+float K_e = 0.95;
+float A = 0.2, l = 1.0, g = 9.81;
 glm::vec2 l_xy(1.0,1.0);
-float max_height_difference = 0.3f;
+float max_height_difference = 0.6f;
+float depth_fac = 3.0; // Multiply K_s by this per height
 
 int run_sim = 1; // 0 = restart sim, 1 = run sim, 2 = exit completely
 
 // Performs a single erosion pass on the given textures, updates the references accordingly
-void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *T2_f, Framebuffer *T3_v, Framebuffer *temp) {
+void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *T2_f, Framebuffer *T3_v, Framebuffer *temp, Framebuffer *orig_T1) {
 
 	glBlendFunc(GL_ONE, GL_ZERO);
 	
@@ -736,7 +737,10 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	glUseProgram(erosionDeposition_shader);
 	pass_texture_uniforms(erosionDeposition_shader, T1_binding, T2_binding, T3_binding);
 	// uniforms
+	bindTexture(GL_TEXTURE5, GL_TEXTURE_2D, orig_T1->texture_refs[0]);
 	glUniform2f(glGetUniformLocation(erosionDeposition_shader, "texture_size"), field_size.x, field_size.y);
+	glUniform1f(glGetUniformLocation(erosionDeposition_shader, "depth_fac"), depth_fac);
+	glUniform1i(glGetUniformLocation(erosionDeposition_shader, "orig_T1"), 5);
 	glUniform2f(glGetUniformLocation(erosionDeposition_shader, "l_xy"), l_xy.x, l_xy.y);
 	glUniform3f(glGetUniformLocation(erosionDeposition_shader, "K"), K_c, K_s, K_d);
 	render_screen();
@@ -797,11 +801,12 @@ void erosion_loop_flat() {
 	Framebuffer T2_f =   gen_framebuffer(field_size, GL_NEAREST, GL_CLAMP_TO_BORDER, GL_RGBA32F);
 	Framebuffer T3_v =   gen_framebuffer(field_size, GL_NEAREST, GL_CLAMP_TO_BORDER, GL_RGBA32F);
 	Framebuffer temp =   gen_framebuffer(field_size, GL_NEAREST, GL_CLAMP_TO_BORDER, GL_RGBA32F);
+	Framebuffer orig_T1= gen_framebuffer(field_size, GL_NEAREST, GL_CLAMP_TO_BORDER, GL_RGBA32F);
 
 	// Has render targets for colors, normal, and depth.
 	Framebuffer water_prepass_fbo   = gen_framebuffer(screen_size, GL_LINEAR, GL_CLAMP_TO_BORDER, GL_RGBA32F, glm::vec4(0), 3, DEPTH_TEXTURE);
 	Framebuffer terrain_prepass_fbo = gen_framebuffer(screen_size, GL_LINEAR, GL_CLAMP_TO_BORDER, GL_RGBA32F, glm::vec4(0), 3, DEPTH_TEXTURE);
-	Framebuffer ssao_fbo = gen_framebuffer(screen_size, GL_LINEAR, GL_CLAMP_TO_BORDER, GL_R32F, glm::vec4(0), 1, NO_DEPTH_TEXTURE);
+	Framebuffer ssao_fbo            = gen_framebuffer(screen_size, GL_LINEAR, GL_CLAMP_TO_BORDER, GL_R32F,    glm::vec4(0), 1, NO_DEPTH_TEXTURE);
 	
     getErrors();
 
@@ -826,6 +831,10 @@ void erosion_loop_flat() {
 	pass_texture_uniforms(init_shader_erosion_flat, 0, 1, 2);
 	render_terrain(init_shader_erosion_flat, &render_obj_mesh);
 	std::swap(T1_bds, temp);
+
+	bindFramebuffer(&orig_T1);
+	glClear(GL_COLOR_BUFFER_BIT);
+	render_texture(T1_bds.texture_refs[0], passthrough_shader);
     
 	init_gui();
 	init_controls();
@@ -847,7 +856,7 @@ void erosion_loop_flat() {
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		for (int i = 0; i < 16; i++)
-			erosion_pass_flat(field_size, &T1_bds, &T2_f, &T3_v, &temp);
+			erosion_pass_flat(field_size, &T1_bds, &T2_f, &T3_v, &temp, &orig_T1);
 
 		// Swap buffers
 		glfwSwapBuffers(window);
@@ -1015,6 +1024,7 @@ void gui_window() {
 	ImGui::InputFloat("A: cross sectional area of pipe", &A, 0.01, 1, "%.2f", power);
 	ImGui::InputFloat("l: length of pipe", &l, 0.01, 0.1, "%.2f", power);
 	ImGui::InputFloat("g: gravity", &g, 0.01, 1, "%.2f", power);
+	ImGui::InputFloat("delta_H:max height difference", &max_height_difference, step, step_fast, format, power);
 	ImGui::InputFloat2("L_x, L_y", glm::value_ptr(l_xy), 3);
 	
 	ImGui::Checkbox("place_sources", &top_view_toggle);
