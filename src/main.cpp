@@ -354,7 +354,7 @@ void handleSourcePlacements_callback(GLFWwindow* window, int button, int action,
 }
 
 
-float global_source_intensity=1.0;
+float global_source_intensity=100.0;
 void render_sources(GLuint programID, float delta_t) {
 	glBlendFunc(GL_ONE,GL_ONE);
 	glUniform1f(glGetUniformLocation(programID,"global_source_intensity"), global_source_intensity);
@@ -638,7 +638,7 @@ float K_e = 0.95;
 float A = 0.2, l = 1.0, g = 9.81;
 glm::vec2 l_xy(1.0,1.0);
 float max_height_difference = 0.6f;
-float depth_fac = 3.0; // Multiply K_s by this per height
+float K_s_depthfac = 3.0, K_s_noisefac = 2.0; // Multiply K_s by this per height/-lin noise (sorry for the awful joke)
 
 int run_sim = 1; // 0 = restart sim, 1 = run sim, 2 = exit completely
 
@@ -739,7 +739,8 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	// uniforms
 	bindTexture(GL_TEXTURE5, GL_TEXTURE_2D, orig_T1->texture_refs[0]);
 	glUniform2f(glGetUniformLocation(erosionDeposition_shader, "texture_size"), field_size.x, field_size.y);
-	glUniform1f(glGetUniformLocation(erosionDeposition_shader, "depth_fac"), depth_fac);
+	glUniform1f(glGetUniformLocation(erosionDeposition_shader, "K_s_depthfac"), K_s_depthfac);
+	glUniform1f(glGetUniformLocation(erosionDeposition_shader, "K_s_noisefac"), K_s_noisefac);
 	glUniform1i(glGetUniformLocation(erosionDeposition_shader, "orig_T1"), 5);
 	glUniform2f(glGetUniformLocation(erosionDeposition_shader, "l_xy"), l_xy.x, l_xy.y);
 	glUniform3f(glGetUniformLocation(erosionDeposition_shader, "K"), K_c, K_s, K_d);
@@ -1016,9 +1017,12 @@ void gui_window() {
 	const char* format = "%.5f";
 	float power = 1.0f;
 	ImGui::InputFloat("rain_intensity", &rain_intensity, step, step_fast, format, power);
+	ImGui::InputFloat("source_intensity", &global_source_intensity, step, step_fast, format, power);
 	ImGui::InputFloat("delta_t", &delta_t, step, step_fast, format, power);
 	ImGui::InputFloat("K_c:sediment capacity", &K_c, step, step_fast, format, power);
 	ImGui::InputFloat("K_s:dissolving constant ", &K_s, step, step_fast, format, power);
+	ImGui::InputFloat("K_s depthfac:variation with h", &K_s_depthfac, step, step_fast, format, power);
+	ImGui::InputFloat("K_s noisefac:variation with noise", &K_s_noisefac, step, step_fast, format, power);
 	ImGui::InputFloat("K_d:deposition constant ", &K_d, step, step_fast, format, power);
 	ImGui::InputFloat("K_e:evaporation constant", &K_e, step, step_fast, format, power);
 	ImGui::InputFloat("A: cross sectional area of pipe", &A, 0.01, 1, "%.2f", power);

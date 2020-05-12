@@ -14,7 +14,8 @@ uniform vec2 l_xy; // l_xy.x = l_x, l_xy.y = l_y
 //uniform float K_s; //dissolving constant
 //uniform float K_d; //deposition constant
 uniform vec2 texture_size;
-uniform float depth_fac;
+uniform float K_s_depthfac;
+uniform float K_s_noisefac;
 uniform sampler2D orig_T1;
 
 
@@ -78,11 +79,11 @@ vec4 avg(sampler2D tex) {
 float get_height_fac() {
 	vec4 self_bds = texture(T1_bds, UV);
 	vec4 orig_bds = texture(orig_T1, UV);
-	return 1.0 + max(orig_bds.x - self_bds.x,0) * depth_fac;
+	return 1.0 + max(orig_bds.x - self_bds.x,0) * K_s_depthfac;
 }
 
 float get_noise_fac() { 
-	return 1.0 + (perlinFractal(UV*64.0, 1.13254234)+1.0) * 1.0;
+	return 1.0 + (perlinFractal(UV*64.0, 1.13254234)+1.0) * K_s_noisefac;
 }
 
 void main() {
@@ -95,7 +96,7 @@ void main() {
 
 	float fac = 1.0 / (get_height_fac() * get_noise_fac());
 
-	if (C / fac > self_bds.z) {
+	if (C  > self_bds.z) {
 		color.x = self_bds.x - K.y * (C - self_bds.z) * fac;
 		color.z = self_bds.z + K.y * (C - self_bds.z) * fac;
 	}
