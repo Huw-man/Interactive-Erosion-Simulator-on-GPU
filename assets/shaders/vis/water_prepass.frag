@@ -1,7 +1,7 @@
 #version 330 core
 
 uniform vec3 u_cam_pos;
-uniform vec3 u_light_pos;
+uniform vec3 u_light_dir;
 uniform vec3 u_light_intensity;
 
 uniform vec3 water_color;
@@ -32,18 +32,20 @@ void main() {
 	vec3 out_ambient_3 = k_a * ambient;
 
 	vec3 v_pos_3 = v_position.xyz;
-	vec3 v_norm_3 = v_normal.xyz;
-	vec3 l = u_light_pos - v_pos_3;
+	vec3 v_norm_3 = normalize(v_normal.xyz);
 	float k_d = 1;
-	vec3 out_diff_3 = k_d * u_light_intensity / (length(l) * length(l)) * max(0.0, (1.0 + dot(v_norm_3, normalize(l)))/2.0);
+	// The 0.9 + / 1.8 is a slight hack to get slightly nicer ambient lighting
+	vec3 out_diff_3 = k_d * u_light_intensity * max(0.0, (0.9+dot(v_norm_3, u_light_dir)) / 1.9 );
+
+
 
 	vec3 v = u_cam_pos - v_pos_3;
-	vec3 h = normalize(v + l);
-	float k_s = .8; //placeholder, specular constant for water
+	vec3 h = normalize(v + u_light_dir);
+	float k_s = 0.8; //placeholder, specular constant for terrain
 	
 	int p = 48;
 
-	vec3 out_spec_3 = k_s * u_light_intensity / (length(l) * length(l)) * pow(max(0.0, dot(v_norm_3, h)), p);
+	vec3 out_spec_3 = k_s * u_light_intensity * pow(max(0.0, dot(v_norm_3, h)), p);
 
 	color = vec4(out_ambient_3 + out_diff_3 + out_spec_3, 1) * vec4(water_color, 1);
 

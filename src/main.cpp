@@ -398,14 +398,15 @@ void render_terrain(GLuint programID, std::function<void()> render_mesh) {
 
 	// uniforms
 	glm::vec4 u_cam_pos = glm::vec4(0);
-	glm::vec4 u_light_pos(20, 10, 0, 1);
-	u_light_pos = ViewMatrix * u_light_pos;
-	glm::vec3 u_light_intensity(400, 400, 400);
+	glm::vec4 u_light_dir(-20, -10, 0, 1);
+	u_light_dir = ViewMatrix * (-u_light_dir);
+	u_light_dir = glm::normalize(u_light_dir);
+	glm::vec3 u_light_intensity(2, 2, 2);
 	glm::vec3 terrain_color(154/255.0,  99/255.0,  72/255.0);
 	glm::vec3 water_color  ( 52/255.0, 133/255.0, 157/255.0);
 
 	glUniform3f(glGetUniformLocation(programID, "u_cam_pos"), u_cam_pos.x, u_cam_pos.y, u_cam_pos.z);
-	glUniform3f(glGetUniformLocation(programID, "u_light_pos"), u_light_pos.x, u_light_pos.y, u_light_pos.z);
+	glUniform3f(glGetUniformLocation(programID, "u_light_dir"), u_light_dir.x, u_light_dir.y, u_light_dir.z);
 	glUniform3f(glGetUniformLocation(programID, "u_light_intensity"), u_light_intensity.x, u_light_intensity.y, u_light_intensity.z);
 	glUniform3f(glGetUniformLocation(programID, "water_color"), water_color.x, water_color.y, water_color.z);
 	glUniform3f(glGetUniformLocation(programID, "terrain_color"), terrain_color.x, terrain_color.y, terrain_color.z);
