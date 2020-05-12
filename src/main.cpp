@@ -349,7 +349,7 @@ void handleSourcePlacements_callback(GLFWwindow* window, int button, int action,
 		// std::cout<<mouse_worldspace.x << "," << mouse_worldspace.y << ", " << mouse_worldspace.z <<std::endl;
 		// std::cout << t << std::endl;
 		// std::cout<<i.x << "," << i.y << ", " << i.z <<std::endl;
-		add_source(mPos,0.01,0.2);
+		add_source(mPos,0.01,0.5);
 	}
 }
 
