@@ -48,7 +48,7 @@ void main() {
 	color = vec4(out_ambient_3 + out_diff_3 + out_spec_3, 1) * vec4(water_color, 1);
 
 	// Toggle this on/off to highlight sediment-carrying water
-	color.rgb = mix(color.rgb, vec3(0.5,0.24,0.177), clamp(self_bds.b*350,0,0.4));
+	color.rgb = mix(color.rgb, vec3(0.5,0.24,0.177), clamp(self_bds.b*150,0,0.4));
 
 	normal = vec4(v_norm_3,1);
 	pos = vec4(v_position.rgb,1);

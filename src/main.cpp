@@ -349,7 +349,7 @@ void handleSourcePlacements_callback(GLFWwindow* window, int button, int action,
 		// std::cout<<mouse_worldspace.x << "," << mouse_worldspace.y << ", " << mouse_worldspace.z <<std::endl;
 		// std::cout << t << std::endl;
 		// std::cout<<i.x << "," << i.y << ", " << i.z <<std::endl;
-		add_source(mPos,0.03,0.02);
+		add_source(mPos,0.01,0.2);
 	}
 }
 
@@ -400,7 +400,7 @@ void render_terrain(GLuint programID, std::function<void()> render_mesh) {
 	glm::vec4 u_cam_pos = glm::vec4(0);
 	glm::vec4 u_light_pos(20, 10, 0, 1);
 	u_light_pos = ViewMatrix * u_light_pos;
-	glm::vec3 u_light_intensity(200, 200, 200);
+	glm::vec3 u_light_intensity(400, 400, 400);
 	glm::vec3 terrain_color(154/255.0,  99/255.0,  72/255.0);
 	glm::vec3 water_color  ( 52/255.0, 133/255.0, 157/255.0);
 
@@ -559,6 +559,7 @@ void render_visualization(
 
 	glm::mat4 V = getViewMatrix();
 	glm::mat4 ivp = glm::inverse(proj*V);
+	glm::mat4 iv = glm::inverse(V);
 
 
 	bindTexture(GL_TEXTURE7, GL_TEXTURE_CUBE_MAP, skybox);
@@ -579,6 +580,7 @@ void render_visualization(
 	glUniformMatrix4fv(glGetUniformLocation(water_secondpass_shader, "IP"), 1, GL_FALSE, &iproj[0][0]);
 
 	glUniformMatrix4fv(glGetUniformLocation(water_secondpass_shader, "IVP"), 1, GL_FALSE, &ivp[0][0]);
+	glUniformMatrix4fv(glGetUniformLocation(water_secondpass_shader, "IV"), 1, GL_FALSE, &iv[0][0]);
 
 
 	render_screen();
@@ -631,11 +633,11 @@ glm::vec2 bucket_position(0.5,0.5);
 
 // simulation constants, editable from gui
 int timestep = 0;
-float rain_intensity = 10.0;
+float rain_intensity = 20.0;
 float delta_t = 0.0005;
-float K_c = 0.08, K_s = 0.01, K_d = 0.01;
+float K_c = 0.01, K_s = 0.01, K_d = 0.01;
 float K_e = 0.95;
-float A = 0.2, l = 1.0, g = 9.81;
+float A = 0.6, l = 1.0, g = 9.81;
 glm::vec2 l_xy(1.0,1.0);
 float max_height_difference = 0.6f;
 float K_s_depthfac = 3.0, K_s_noisefac = 2.0; // Multiply K_s by this per height/-lin noise (sorry for the awful joke)
