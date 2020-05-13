@@ -354,7 +354,7 @@ void handleSourcePlacements_callback(GLFWwindow* window, int button, int action,
 }
 
 
-float global_source_intensity=100.0;
+float global_source_intensity=1.0;
 void render_sources(GLuint programID, float delta_t) {
 	glBlendFunc(GL_ONE,GL_ONE);
 	glUniform1f(glGetUniformLocation(programID,"global_source_intensity"), global_source_intensity);
@@ -634,7 +634,7 @@ glm::vec2 bucket_position(0.5,0.5);
 
 // simulation constants, editable from gui
 int timestep = 0;
-float rain_intensity = 20.0;
+float rain_intensity = 0.01;
 float delta_t = 0.0005;
 float K_c = 0.01, K_s = 0.01, K_d = 0.01;
 float K_e = 0.95;
@@ -788,6 +788,7 @@ void erosion_pass_flat(glm::ivec2 field_size, Framebuffer *T1_bds, Framebuffer *
 	render_screen();
 	std::swap(*T1_bds, *temp);
 	std::swap(T1_binding, temp_binding);
+	getErrors();
 
 	
 }
@@ -859,11 +860,14 @@ void erosion_loop_flat() {
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-		for (int i = 0; i < 16; i++)
-			erosion_pass_flat(field_size, &T1_bds, &T2_f, &T3_v, &temp, &orig_T1);
+		if (!paused)
+			for (int i = 0; i < 16; i++)
+				erosion_pass_flat(field_size, &T1_bds, &T2_f, &T3_v, &temp, &orig_T1);
+		getErrors();
 
 		// Swap buffers
 		glfwSwapBuffers(window);
+		getErrors();
 		glfwPollEvents();
 		getErrors();
 
