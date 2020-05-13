@@ -634,9 +634,9 @@ glm::vec2 bucket_position(0.5,0.5);
 
 // simulation constants, editable from gui
 int timestep = 0;
-float rain_intensity = 0.01;
+float rain_intensity = 2.0;
 float delta_t = 0.0005;
-float K_c = 0.01, K_s = 0.01, K_d = 0.01;
+float K_c = 0.03, K_s = 0.03, K_d = 0.03;
 float K_e = 0.95;
 float A = 0.6, l = 1.0, g = 9.81;
 glm::vec2 l_xy(1.0,1.0);
@@ -861,7 +861,7 @@ void erosion_loop_flat() {
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		if (!paused)
-			for (int i = 0; i < 16; i++)
+			for (int i = 0; i < 4; i++)
 				erosion_pass_flat(field_size, &T1_bds, &T2_f, &T3_v, &temp, &orig_T1);
 		getErrors();
 
@@ -1017,7 +1017,7 @@ void init_gui() {
 void gui_window() {
 	ImGui::Begin("Controls");
 
-	ImGui::Text("w, a, s, d to move\nSpace: fly up, L_Shift: fly down\ne to toggle camera pan\nESC to quit");
+	ImGui::Text("w, a, s, d to move\nSpace: fly up, L_Shift: fly down\ne to toggle camera pan\np to pause simulation\nESC to quit");
 
 	float step = 1.0e-5f;
 	float step_fast = 0.1f;

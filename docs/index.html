@@ -91,13 +91,13 @@
     <a href="#proposal">Proposal</a>
 </div>
 
-<h1 align="middle" class="section" id="final">Interactive Erosion Simulator</h1>
+<h1 align="middle" class="section" id="final">Interactive Hydraulic Erosion Simulator</h1>
 <h3 align="middle">Dylan Mcleod, Hanlin Chen, Newman Hu</h3>
 
 <div>
     <h2>Abstract</h2>
     <p>
-        We create an interactive erosion simulator for the procedural generation of natural terrain. Our simulation uses a shallow water fluid model and velocity field for calculating the erosion and deposition process. The entire simulation is developed to run on the GPU which allows for impressive framerates and full interactivity. Our model illustrates the effects of rain and river sources and allows users to place river sources to sculpt the landscape to their liking. Additionally, our application produces realistic water visualization with fully simulated waves, directional lighting, and textured terrain. 
+        We create an interactive hydraulic erosion simulator for the procedural generation of natural terrain. Our simulation uses a shallow water fluid model and velocity field for calculating the erosion and deposition process. The entire simulation is developed to run on the GPU, using C++ and OpenGL, allowing for impressive framerates and full interactivity. Our model illustrates the effects of rain and river sources and allows users to place river sources to sculpt the landscape to their liking. Additionally, our application produces realistic water visualization with fully simulated waves, directional lighting, and textured terrain. 
     </p>
 
     <h2>Technical Approach</h2>
@@ -107,7 +107,7 @@
         </p>
         <p>
             The model is represented by a 2D grid, with each cell containing the following information: terrain height <b>b</b>, water height <b>d</b>, suspended sediment amount <b>s</b>, the outflow flux <b>f</b> = (f_L, f_R, f_T , f_B), and velocity vector <b>v</b> = (u, v). 
-            We then store all of this information in textures to be passed into shaders: texture T1 containing <b>b</b>, <b>d</b>, and <b>s</b>; texture T2 containing all components of <b>f</b>; and texture T3 containing the components of <b>v</b>.
+            We then store all of this information in textures on the GPU to be passed into shaders: texture T1 containing <b>b</b>, <b>d</b>, and <b>s</b>; texture T2 containing all components of <b>f</b>; and texture T3 containing the components of <b>v</b>.
         </p>
         <p>
             The following five steps provide a compact summary of the simulation process:
@@ -232,7 +232,7 @@
 	
 	
         <p>
-            Beautiful.
+            You can use the left/right arrows to navigate the slideshow.
         </p>
         <div class="slideshow-container">
         <div class="mySlides fade">
@@ -301,7 +301,16 @@
             <span class="dot" onclick="currentSlide(8)"></span> 
             <span class="dot" onclick="currentSlide(9)"></span> 
         </div>
-
+	<h2>Videos</h2>
+	<p>
+		<a href="https://drive.google.com/file/d/1h2X2mxFuGRpwr6U3XpWqAWbzIVpfaa3H/view?usp=sharing">Rain timelapse</a>
+	</p>
+	<p>
+		<a href="https://drive.google.com/file/d/1BnIfObWsdg2-Jzjw8NOpntNsA39bWSNo/view?usp=sharing">River timelapse</a>
+	</p>
+	<p>
+		<a href="https://drive.google.com/file/d/1BnIfObWsdg2-Jzjw8NOpntNsA39bWSNo/view?usp=sharing">River+Rain timelapse</a>
+	</p>
 
     <h2>References</h2>
         <p>
@@ -313,7 +322,7 @@
 
     <h2>Contributions</h2>
     <p>
-        Thank you Dylan for putting together the starter code, most of the C++/OpenGL simulation and rendering code, and the visualization shaders. Also, thank you for doing a bunch of little things to improve the results slightly.
+        Thank you Dylan for putting together the starter code, most of the C++/OpenGL simulation and rendering code, and the visualization shaders. Also, thank you for experimenting and doing a bunch of little things to improve the results slightly.
     </p>
     <p>
         Thank you Newman for creating most of the user interface associated with changing simulation parameters, placing water sources, and controlling the camera. Also, for implementing the openGL terrain loader and writing the preliminary terrain shaders.
@@ -321,6 +330,9 @@
     <p>
         Thank you Hanlin for researching possible implementations and writing the shaders related to erosion simulation.
     </p>
+	<p>
+		<a href="https://github.com/Huw-man/Interactive-Erosion-Simulator-on-GPU">Github link</a>
+	</p>
 </div>
 
 
