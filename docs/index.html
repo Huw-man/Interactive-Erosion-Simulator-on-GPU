@@ -114,6 +114,18 @@
         <p>
             At every time step water is added to the terrain through water sources (rivers) or through rain. Rain adds water from a random distribution and water sources are introduced by the user. For a given amount of water <span lang="latex">r_t(x,y)</span> the water level is updated by: <span lang="latex">d_1(x, y) = d_t(x, y) + \Delta t \cdot r_t(x, y)</span>. This update is computed by a rain fragment shader and packed into T1. We choose to drop the rain in buckets instead of using something like a gaussian distribution, because completely uniform rain is a bit less interesting.
         </p>
+		<div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+					<img src="images/sources.png" width="480px" />
+                    <figcaption align="middle">Water originating from sources</figcaption>
+                    <td align="middle">
+					<img src="images/buckets.png" width="480px" />
+                    <figcaption align="middle">Some "buckets" of rain</figcaption>
+					</tr>
+            </table>
+        </div>
 
 
         <h4>2. <span lang="latex">(d_2,\textbf{f}_t + \Delta t, \vec{\textbf{v}}_t+\Delta t) \leftarrow FlowSimulation(d_1, b_t,\textbf{f}_t)</span></h4>
@@ -134,6 +146,15 @@
             Finally, we update the velocity flow. Again, we will use the x component u as an example, but the process should be repeated for the y component v. First we find the average amount of water passing through in the x direction: <span lang="latex"> W_X = \frac{f^R (x-1, y) - f^L (x, y)+ f^R (x, y) - f^L (x + 1, y)}{2}</span>. Then, we calculate <span lang="latex">u = \frac{\Delta W_X }{l_Y \cdot \bar{d}}</span>, where <span lang="latex">\bar{d}</span> is the average water level between this and last step, <span lang="latex">\bar{d} = \frac{d_1+d_2}{2}</span>.
         </p>
 
+		
+		<div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+					<img src="images/water_flow.png" width="600px" />
+                    <figcaption align="middle">A simulated beach</figcaption>
+            </table>
+        </div>
 
         <h4>
             3. <span lang="latex">(b_{t+\Delta t}, s_1) \leftarrow ErosionDeposition(\vec{\textbf{v}}_{t+\Delta t}, b_t, s_t)</span>
@@ -162,6 +183,15 @@
         <p>
             The sediment transport process is described by the equation <span lang="latex">\frac{\delta s}{\delta t} + (\vec{\textbf{v}} \cdot \Delta s) = 0</span>. We get the update step by taking an Euler step back in time: <span lang="latex">s_{t+\Delta t} (x, y) = s_1 (x - u \cdot \Delta t, y - v \cdot \Delta t)</span>. When the step coordinates  (x - u · ∆t, y - v · ∆t) don’t correspond to exact grid points, we use bilinear interpolation to interpolate the value of <span lang="latex">s_1</span> based on the four surrounding grid points.
         </p>
+		
+		<div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+					<img src="images/river_splits.png" width="600px" />
+                    <figcaption align="middle">The awesome power of water, splitting a mountain</figcaption>
+            </table>
+        </div>
 
 
         <h4>
@@ -195,6 +225,9 @@
 
 
     <h2>Results</h2>
+	
+	
+	
     <h2>References</h2>
         <p>
             <a href="https://hal.inria.fr/inria-00402079/document">[1]</a> Xing Mei, Philippe Decaudin, Bao-Gang Hu. Fast Hydraulic Erosion Simulation and Visualization on GPU. PG ’07 - 15th Pacific Conference on Computer Graphics and Applications, Oct 2007, Maui, United States. pp.47-56, ff10.1109/PG.2007.15ff. ffinria-00402079f

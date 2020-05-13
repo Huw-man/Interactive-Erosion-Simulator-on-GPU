@@ -26,14 +26,16 @@ float verticalAngle = -3.14f / 4.0f;
 // Initial Field of View
 float initialFoV = 70.0f;
 
-float speed = 3.0f; // 3 units / second
-float mouseSpeed = 0.01f;
+float speed = 1.0f; // 3 units / second
+float mouseSpeed = 0.002f;
 
 glm::mat4 ViewMatrix;
 glm::mat4 ProjectionMatrix;
 double xpos, ypos;
 bool pan_toggle = false;
 bool top_view_toggle = false;
+bool paused = false;
+int pause_delay = 20;
 
 void e_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -100,6 +102,12 @@ void computeMatricesFromInputs(){
 	// Up vector
 	glm::vec3 up = glm::cross( right, direction );
 
+	// Move forward
+	if (glfwGetKey( window, GLFW_KEY_P ) == GLFW_PRESS && pause_delay <= 0){
+		paused = !paused;
+		pause_delay = 20;
+	}
+	pause_delay -= 1;
 	// Move forward
 	if (glfwGetKey( window, GLFW_KEY_W ) == GLFW_PRESS){
 		position += normalize(xz_direction) * deltaTime * speed;

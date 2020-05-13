@@ -79,7 +79,7 @@ void main() {
 	vec3 tex3_color = texture(tex3, v_uv*64.0).rgb;
 	float sel = (perlinFractal(v_uv*8.0,0.0) + 1.0) / 2.0;
 	tex_color = mix(tex2_color, tex_color, clamp(sel+0.5,0,1));
-	tex_color = mix(tex_color, tex3_color, rock_sel);
+	tex_color = mix(tex_color, tex3_color, rock_sel*0.2);
 
 	// Can't normal map without tbn
 	// vec3 tex_normal = (MV*vec4(texture(tex1_norms, v_uv*4.0).xyz,0)).xyz; 

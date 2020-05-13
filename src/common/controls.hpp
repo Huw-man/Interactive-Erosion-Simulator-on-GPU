@@ -2,7 +2,7 @@
 #define CONTROLS_HPP
 
 extern bool top_view_toggle;
-
+extern bool paused;
 void init_controls();
 void computeMatricesFromInputs();
 glm::mat4 getViewMatrix();
