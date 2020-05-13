@@ -92,7 +92,10 @@ void main() {
 
 	float sin_alpha = find_sin_alpha();
 
-	float C = K.x * sin_alpha * length(vel) * clamp(self_bds.y,0,1);
+	// Additional constants (0.15) added by suggestion of the authors
+	// We could also do the velocity a little differently, making the rain shader increase the outflow flux
+	// But essentially the water will dissolve a tiny bit even if still
+	float C = K.x * (sin_alpha + 0.15) * max(0.15,length(vel)) * clamp(self_bds.y,0,1);
 
 	float fac = 1.0 / (get_height_fac() * get_noise_fac());
 

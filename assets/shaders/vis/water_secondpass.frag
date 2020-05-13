@@ -22,6 +22,8 @@ uniform float zNear;
 uniform float zFar;
 
 uniform mat4 IVP;
+uniform mat4 IV;
+uniform mat4 IP;
 
 uniform mat4 P;
 
@@ -42,12 +44,12 @@ void main() {
     float ray_depth = w_depth - t_depth;
 
     if (terrain_col.a < 0.0001) {
-        vec4 dir = IVP*vec4(UV.xy*2.0-1.0, 1, 1);
-        terrain_col = texture(skybox, dir.xyz/dir.w);
+        vec4 dir = IV * vec4( (IP*vec4(UV.xy*2.0-1.0, 1, 1)).xyz, 0);
+        terrain_col = texture(skybox, dir.xyz);
     } 
 
     if (ray_depth > 0.00001) {
-        float alph = (1.0 - exp(-ray_depth))*0.4+0.3*clamp(ray_depth*10000.0, 0, 1);
+        float alph = (1.0 - exp(-ray_depth))*0.6+0.3*clamp(ray_depth*10000.0, 0, 1);
 
 
         color = mix(terrain_col, water_col, alph);
