@@ -181,7 +181,7 @@
             We were having difficulties with unrealistically deep valleys and steep peaks from a positive feedback loop in the simulation. Essentially, water would choose to go down a certain route, eroding it a little, then it would continue to choose to go down that route again and again. While this is realistic to a degree, we were finding that large amounts of water (literal rivers worth) would create only very narrow channels, and no wide ones.
         </p>
         <p>
-            To solve this, we made a few changes/additions to the reference procedure. (1)When performing the erosion/deposition update, we adjust the dissolving rate based on Perlin noise and the height of the terrain, in order to mimic different materials (rocks, below the surface, tend to be more resistant to erosion). (2) At the end of every simulation cycle, we add a smoothing shader that, at local extrema, enforces the change in the terrain’s height to not be too large. 
+            To solve this, we made a few changes/additions to the reference procedure. (1)When performing the erosion/deposition update, we adjust the dissolving rate based on Perlin noise and the height of the terrain, in order to mimic different materials (rocks, below the surface, tend to be more resistant to erosion). The inspiration for this tweak came from Ondřej Št’ava, Bedřich Beneš, Matthew Brisbin, and Jaroslav Křivánek [2], which demonstrated different sediment layers with different erosion characteristics. (2) At the end of every simulation cycle, we add a smoothing shader that, at local extrema, enforces the change in the terrain’s height to not be too large. 
         </p>
         <p>
             We found that to get the best results, we’ll make the smoothing initially very high and place sources, creating wide channels, then we introduce rain and lower the smoothing, creating thin cracks.
@@ -193,9 +193,16 @@
             Overall, this was a very interesting and educational project. We expanded our proficiency in writing shaders and we were able to apply many of the rendering techniques taught in CS184. One of the main problems we encountered was not planning sound infrastructure for the codebase before implementing the simulation. In future work, we should construct the project to be more extensible for additional cool features.
         </p>
 
-        
+
     <h2>Results</h2>
     <h2>References</h2>
+        <p>
+            <a href="https://hal.inria.fr/inria-00402079/document">[1]</a> Xing Mei, Philippe Decaudin, Bao-Gang Hu. Fast Hydraulic Erosion Simulation and Visualization on GPU. PG ’07 - 15th Pacific Conference on Computer Graphics and Applications, Oct 2007, Maui, United States. pp.47-56, ff10.1109/PG.2007.15ff. ffinria-00402079f
+        </p>
+        <p>
+            <a href="http://hpcg.purdue.edu/papers/Stava08SCA.pdf">[2]</a> Ondřej Št’ava, Bedřich Beneš, Matthew Brisbin, and Jaroslav Křivánek. 2008. Interactive terrain modeling using hydraulic erosion. In Proceedings of the 2008 ACM SIGGRAPH/Eurographics Symposium on Computer Animation (SCA ’08). Eurographics Association, Goslar, DEU, 201–210.
+        </p>
+
     <h2>Acknowledgements</h2>
 </div>
 
