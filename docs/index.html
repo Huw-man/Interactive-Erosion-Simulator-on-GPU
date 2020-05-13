@@ -4,7 +4,7 @@
     <style>
         body {
             padding: 100px;
-            width: 90%;
+            width: 60%;
             margin: auto;
             text-align: left;
             font-weight: 300;
@@ -46,7 +46,7 @@
             background-color: #333;
             position: fixed; /* Set the navbar to fixed position */
             top: 0; /* Position the navbar at the top of the page */
-            width: 90%; /* Full width */
+            width: 50%; /* Full width */
         }
 
         /* Links inside the navbar */
@@ -74,10 +74,13 @@
     <script type="text/javascript">
         LatexIT.add('pre', true);
     </script>
+    <script src="slideshow.js"></script>
 
     <title>CS 184 Final Project</title>
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
     <link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="slideshow.css">
+    
 </head>
 
 <body>
@@ -118,10 +121,10 @@
             <table style="width=100%">
                 <tr>
                     <td align="middle">
-					<img src="images/sources.png" width="480px" />
+					<img src="images/sources.png" width="100%" />
                     <figcaption align="middle">Water originating from sources</figcaption>
                     <td align="middle">
-					<img src="images/buckets.png" width="480px" />
+					<img src="images/buckets.png" width="100%" />
                     <figcaption align="middle">Some "buckets" of rain</figcaption>
 					</tr>
             </table>
@@ -151,7 +154,7 @@
             <table style="width=100%">
                 <tr>
                     <td align="middle">
-					<img src="images/water_flow.png" width="600px" />
+					<img src="images/water_flow.png" width="75%" />
                     <figcaption align="middle">A simulated beach</figcaption>
             </table>
         </div>
@@ -188,7 +191,7 @@
             <table style="width=100%">
                 <tr>
                     <td align="middle">
-					<img src="images/river_splits.png" width="600px" />
+					<img src="images/river_splits.png" width="75%" />
                     <figcaption align="middle">The awesome power of water, splitting a mountain</figcaption>
             </table>
         </div>
@@ -228,6 +231,78 @@
 	
 	
 	
+        <p>
+            Beautiful.
+        </p>
+        <div class="slideshow-container">
+        <div class="mySlides fade">
+          <div class="numbertext">1 / 9</div>
+          <img src="images/2020-05-12 (23).png" style="width:100%">
+          <div class="text">A river on the side of a mountain</div>
+        </div>
+
+        <div class="mySlides fade">
+            <div class="numbertext">2 / 9</div>
+            <img src="images/2020-05-12 (30).png" style="width:100%">
+            <div class="text">A bird's eye view</div>
+        </div>
+        <div class="mySlides fade">
+          <div class="numbertext">3 / 9</div>
+          <img src="images/2020-05-12 (19).png" style="width:100%">
+          <div class="text">Water traveling down channels</div>
+        </div>
+        
+        <div class="mySlides fade">
+          <div class="numbertext">4 / 9</div>
+          <img src="images/2020-05-12 (20).png" style="width:100%">
+          <div class="text"></div>
+        </div>
+		
+        <div class="mySlides fade">
+            <div class="numbertext">5 / 9</div>
+            <img src="images/2020-05-12 (34).png" style="width:100%">
+            <div class="text">A river cutting into a mountain</div>
+        </div>
+        <div class="mySlides fade">
+            <div class="numbertext">6 / 9</div>
+            <img src="images/2020-05-12 (38).png" style="width:100%">
+            <div class="text">Rivers meeting at a pool</div>
+        </div>
+        <div class="mySlides fade">
+            <div class="numbertext">7 / 9</div>
+            <img src="images/2020-05-12 (39).png" style="width:100%">
+            <div class="text"></div>
+        </div>
+        <div class="mySlides fade">
+            <div class="numbertext">8 / 9</div>
+            <img src="images/2020-05-12 (45).png" style="width:100%">
+            <div class="text">Mountains forged by rain</div>
+        </div>
+        <div class="mySlides fade">
+            <div class="numbertext">9 / 9</div>
+            <img src="images/2020-05-12 (48).png" style="width:100%">
+            <div class="text"></div>
+        </div>
+        
+        <a class="prev" onclick="plusSlides(-1)">&#10094;</a>
+        <a class="next" onclick="plusSlides(1)">&#10095;</a>
+        
+        </div>
+        <br>
+        
+        <div style="text-align:center">
+            <span class="dot" onclick="currentSlide(1)"></span> 
+            <span class="dot" onclick="currentSlide(2)"></span> 
+            <span class="dot" onclick="currentSlide(3)"></span>
+            <span class="dot" onclick="currentSlide(4)"></span> 
+            <span class="dot" onclick="currentSlide(5)"></span> 
+            <span class="dot" onclick="currentSlide(6)"></span> 
+            <span class="dot" onclick="currentSlide(7)"></span> 
+            <span class="dot" onclick="currentSlide(8)"></span> 
+            <span class="dot" onclick="currentSlide(9)"></span> 
+        </div>
+
+
     <h2>References</h2>
         <p>
             <a href="https://hal.inria.fr/inria-00402079/document">[1]</a> Xing Mei, Philippe Decaudin, Bao-Gang Hu. Fast Hydraulic Erosion Simulation and Visualization on GPU. PG ’07 - 15th Pacific Conference on Computer Graphics and Applications, Oct 2007, Maui, United States. pp.47-56, ff10.1109/PG.2007.15ff. ffinria-00402079f
@@ -236,7 +311,16 @@
             <a href="http://hpcg.purdue.edu/papers/Stava08SCA.pdf">[2]</a> Ondřej Št’ava, Bedřich Beneš, Matthew Brisbin, and Jaroslav Křivánek. 2008. Interactive terrain modeling using hydraulic erosion. In Proceedings of the 2008 ACM SIGGRAPH/Eurographics Symposium on Computer Animation (SCA ’08). Eurographics Association, Goslar, DEU, 201–210.
         </p>
 
-    <h2>Acknowledgements</h2>
+    <h2>Contributions</h2>
+    <p>
+        Thank you Dylan for putting together the starter code, most of the C++/OpenGL simulation and rendering code, and the visualization shaders. Also, thank you for doing a bunch of little things to improve the results slightly.
+    </p>
+    <p>
+        Thank you Newman for creating most of the user interface associated with changing simulation parameters, placing water sources, and controlling the camera. Also, for implementing the openGL terrain loader and writing the preliminary terrain shaders.
+    </p>
+    <p>
+        Thank you Hanlin for researching possible implementations and writing the shaders related to erosion simulation.
+    </p>
 </div>
 
 
