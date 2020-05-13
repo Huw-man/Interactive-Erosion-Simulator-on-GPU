@@ -1,1 +1,1 @@
-# CS-184-Final-Project
+# Interactive-Erosion-Simulator-on-GPU
