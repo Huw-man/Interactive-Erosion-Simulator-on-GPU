@@ -4,7 +4,7 @@
     <style>
         body {
             padding: 100px;
-            width: 50%;
+            width: 90%;
             margin: auto;
             text-align: left;
             font-weight: 300;
@@ -17,6 +17,10 @@
         }
         p {
             line-height: 180%;
+        }
+
+        .tab {
+            margin-left: 40px;
         }
 
         .aligncenter {
@@ -42,7 +46,7 @@
             background-color: #333;
             position: fixed; /* Set the navbar to fixed position */
             top: 0; /* Position the navbar at the top of the page */
-            width: 50%; /* Full width */
+            width: 90%; /* Full width */
         }
 
         /* Links inside the navbar */
@@ -90,14 +94,106 @@
 <div>
     <h2>Abstract</h2>
     <p>
-        We create an interactive erosion simulator for the procedural generation of natural terrain. Our simulation uses a shallow water fluid model and velocity field for calcuating the erosion and deposition process. The entire simulation is developed to run on the GPU which allows for impressive framerates and full interactivity. Our model illustrates the effects of rain and river sources and allows users to place river sources to sculpt the landscape to their liking. Additionally, our application produces realistic water visualization with fully simulated waves, directional lighting, and textured terrain. 
+        We create an interactive erosion simulator for the procedural generation of natural terrain. Our simulation uses a shallow water fluid model and velocity field for calculating the erosion and deposition process. The entire simulation is developed to run on the GPU which allows for impressive framerates and full interactivity. Our model illustrates the effects of rain and river sources and allows users to place river sources to sculpt the landscape to their liking. Additionally, our application produces realistic water visualization with fully simulated waves, directional lighting, and textured terrain. 
     </p>
 
     <h2>Technical Approach</h2>
-    <p>
-        
-    </p>
+    <h3>Simulation</h3>
+        <p>
+            We implemented the hydraulic erosion model from Xing Mei, Philippe Decaudin, and Bao-Gang Hu [1]. Here we only provide a summary of the erosion model which is explained with much greater depth in their paper.
+        </p>
+        <p>
+            The model is represented by a 2D grid, with each cell containing the following information: terrain height <b>b</b>, water height <b>d</b>, suspended sediment amount <b>s</b>, the outflow flux <b>f</b> = (f_L, f_R, f_T , f_B), and velocity vector <b>v</b> = (u, v). 
+            We then store all of this information in textures to be passed into shaders: texture T1 containing <b>b</b>, <b>d</b>, and <b>s</b>; texture T2 containing all components of <b>f</b>; and texture T3 containing the components of <b>v</b>.
+        </p>
+        <p>
+            The following five steps provide a compact summary of the simulation process:
+        </p>
+       
+        <h4>1.<span lang="latex">d_1 \leftarrow WaterIncrement(d_t)</span></h4>
+        <p>
+            At every time step water is added to the terrain through water sources (rivers) or through rain. Rain adds water from a random distribution and water sources are introduced by the user. For a given amount of water <span lang="latex">r_t(x,y)</span> the water level is updated by: <span lang="latex">d_1(x, y) = d_t(x, y) + \Delta t \cdot r_t(x, y)</span>. This update is computed by a rain fragment shader and packed into T1. We choose to drop the rain in buckets instead of using something like a gaussian distribution, because completely uniform rain is a bit less interesting.
+        </p>
 
+
+        <h4>2. <span lang="latex">(d_2,\textbf{f}_t + \Delta t, \vec{\textbf{v}}_t+\Delta t) \leftarrow FlowSimulation(d_1, b_t,\textbf{f}_t)</span></h4>
+        <p>
+            Because this simulation step updates water, flux, and velocity, it requires three shaders to write to all three of the textures. First, we update the outflow flux. As an example, we will use f_L, but the same is done for all four components: <span lang="latex">f^L_{t+\Delta t} (x, y) = max(0, f^L_t  (x, y) + \Delta t \cdot A \cdot g \cdot \frac{\Delta h^L (x, y)} {l})</span>
+        </P>
+        <!-- <pre >
+            \[ f^L_{t+\Delta t} (x, y) = max(0, f^L_t  (x, y) + \Delta t \cdot A \cdot g \cdot \frac{\Delta h^L (x, y)} {l})\]
+        </pre> -->
+        <p>
+            A, g, and l are physical constants and <span lang="latex">\Delta h^L</span> is the difference in total height (b + d) between the cell and its left neighbor. Then, to prevent the total flux from exceeding the current water amount, we scale the new fluxes by <span lang="latex">K = min(1, \frac{d_1 \cdot l_X \cdot l_Y}{ (f^L + f^R + f^T + f^B) \cdot \Delta t} )</span>
+            , where <span lang="latex">l_X</span> and <span lang="latex">l_Y</span> are the grid distances in each direction.
+        </p>
+        <p>
+            Next, we update the water surface by taking in the flux from neighboring cells and sending out the cell’s outflow flux. We calculate the net change in water as <span lang="latex">\Delta V (x, y) = \Delta t \cdot (\sum{f_{in}} - \sum{f_{out}})</span> and update the water <span lang="latex">d_2(x, y) = d_1(x, y) + \frac{\Delta V (x, y)}{l_X \cdot l_Y}</span>.
+        </p>
+        <p>
+            Finally, we update the velocity flow. Again, we will use the x component u as an example, but the process should be repeated for the y component v. First we find the average amount of water passing through in the x direction: <span lang="latex"> W_X = \frac{f^R (x-1, y) - f^L (x, y)+ f^R (x, y) - f^L (x + 1, y)}{2}</span>. Then, we calculate <span lang="latex">u = \frac{\Delta W_X }{l_Y \cdot \bar{d}}</span>, where <span lang="latex">\bar{d}</span> is the average water level between this and last step, <span lang="latex">\bar{d} = \frac{d_1+d_2}{2}</span>.
+        </p>
+
+
+        <h4>
+            3. <span lang="latex">(b_{t+\Delta t}, s_1) \leftarrow ErosionDeposition(\vec{\textbf{v}}_{t+\Delta t}, b_t, s_t)</span>
+        </h4>
+        <p>
+            The whole purpose of modeling water is for some soil to be carried away by the water as erosion. In this model the erosion-deposition process is affected by local tilt angle, water velocity, and the sediment capacity constant. First we calculate the sediment transport capacity C for the water flowing in cell (x,y): <span lang="latex">C(x, y) = K_c \cdot sin(\alpha (x, y)) \cdot |\vec{v}(x, y)|</span>, where <span lang="latex">\alpha</span> is the local tilt angle, <span lang="latex">\vec{v}</span>is the water velocity, and <span lang="latex">K_c</span>is the sediment capacity constant. 
+        </p>
+        <p>
+            Next we check C against the suspended sediment value s of the cell. If <span lang="latex">C > s_t</span> some soil is dissolved in the water. K_s is the dissolving constant. </br>
+            <span lang="latex">b_{t+\Delta t} = b_t - K_s(C - s_t)</span></br>
+            <span lang="latex">s_1 = s_t + K_s(C - s_t)</span>
+        </p>
+        <p>
+            Conversely, if <span lang="latex">C \leq s_t</span> some soil is deposited onto the terrain and removed from the water. K_d is the deposition constant. </br>
+            <span lang="latex">b_{t+\Delta t} = b_t + K_d(s_t - C)</span></br>
+            <span lang="latex">s_1 = s_t - K_d(s_t - C)</span>
+        </p>
+        <p>
+            We also deviate from the reference and multiply C(x,y) by the height of the water at x,y, clamped between 0 and 1. Otherwise, an arbitrarily small amount of water could dissolve a lot of sediment which is not realistic.
+        </p>
+        
+
+        <h4>
+            4. <span lang="latex">s_{t+\Delta t} \leftarrow SedimentTransport(s_1, \vec{\textbf{v}}_t+\Delta t)</span></br>
+        </h4>
+        <p>
+            The sediment transport process is described by the equation <span lang="latex">\frac{\delta s}{\delta t} + (\vec{\textbf{v}} \cdot \Delta s) = 0</span>. We get the update step by taking an Euler step back in time: <span lang="latex">s_{t+\Delta t} (x, y) = s_1 (x - u \cdot \Delta t, y - v \cdot \Delta t)</span>. When the step coordinates  (x - u · ∆t, y - v · ∆t) don’t correspond to exact grid points, we use bilinear interpolation to interpolate the value of <span lang="latex">s_1</span> based on the four surrounding grid points.
+        </p>
+
+
+        <h4>
+            5. <span lang="latex">d_{t+\Delta t} \leftarrow Evaporation(d_2)</span>
+        </h4>
+        <p>
+            Finally, some water gets evaporated into the air (assumes constant temperature) proportionally to the amount of water, based on the evaporation constant <span lang="latex">K_e</span> : <span lang="latex"> d_{t+\Delta t}(x, y) = d_2(x, y) \cdot (1 - K_e \cdot \Delta t)</span>
+        </p>
+
+        <h3>Visualization</h3>
+        <p>
+            To visualize our results, we render in two passes -- one pass for the terrain, and another for the water. For the terrain, we use the b(x,y) value in the vertex shader to determine the height. Then, in the fragment shader we use a procedural texture, combining a dirt, sand, and rock texture according to perlin noise, lit with phong shading. For water, we use b(x,y) + d(x,y) for the height, and discolor it based on the amount of dissolved sediment, s(x,y). The water and terrain renderings are combined in a final shader, allowing us to shade the water based on how deep a projected camera ray travels before hitting something else. Also, the nice waves and ripples in the water are completely generated from the simulation and not a rendering illusion.
+        </p>
+
+        <h4>Additional Implementation and Challenges</h4>
+        <p>
+            We were having difficulties with unrealistically deep valleys and steep peaks from a positive feedback loop in the simulation. Essentially, water would choose to go down a certain route, eroding it a little, then it would continue to choose to go down that route again and again. While this is realistic to a degree, we were finding that large amounts of water (literal rivers worth) would create only very narrow channels, and no wide ones.
+        </p>
+        <p>
+            To solve this, we made a few changes/additions to the reference procedure. (1)When performing the erosion/deposition update, we adjust the dissolving rate based on Perlin noise and the height of the terrain, in order to mimic different materials (rocks, below the surface, tend to be more resistant to erosion). (2) At the end of every simulation cycle, we add a smoothing shader that, at local extrema, enforces the change in the terrain’s height to not be too large. 
+        </p>
+        <p>
+            We found that to get the best results, we’ll make the smoothing initially very high and place sources, creating wide channels, then we introduce rain and lower the smoothing, creating thin cracks.
+        </p>
+
+
+        <h4>Lessons</h4>
+        <p>
+            Overall, this was a very interesting and educational project. We expanded our proficiency in writing shaders and we were able to apply many of the rendering techniques taught in CS184. One of the main problems we encountered was not planning sound infrastructure for the codebase before implementing the simulation. In future work, we should construct the project to be more extensible for additional cool features.
+        </p>
+
+        
     <h2>Results</h2>
     <h2>References</h2>
     <h2>Acknowledgements</h2>
